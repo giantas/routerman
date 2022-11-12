@@ -23,8 +23,23 @@ SELECT id, name FROM users WHERE id = $1
 -- query: GetUsers
 SELECT id, name FROM users ORDER BY name ASC LIMIT $1 OFFSET $2
 
+-- query: UpdateUser
+UPDATE users SET name = $2 WHERE id = $1
+
+-- query: DeleteUserById
+DELETE FROM users WHERE id = $1
+
+-- query: CreateDevice
+INSERT INTO devices(user_id, alias, mac) VALUE($1, $2, $3) RETURNING id
+
 -- query: GetDeviceById
 SELECT id, user_id, alias, mac FROM devices WHERE id = $1
 
 -- query: GetDevices
 SELECT id, user_id, alias, mac FROM devices ORDER BY id DESC LIMIT $1 OFFSET $2
+
+-- query: UpdateDevice
+UPDATE devices SET user_id = $2, alias = $3, mac = $4 WHERE id = $1
+
+-- query: DeleteDeviceById
+DELETE FROM devices WHERE id = $1

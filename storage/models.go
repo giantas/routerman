@@ -15,17 +15,21 @@ import (
 var dbScript string
 
 var Q = sqload.MustLoadFromString[struct {
-	InitDb           string `query:"InitDb"`
-	CreateUser       string `query:"CreateUser"`
-	GetUserById      string `query:"GetUserById"`
-	GetUsers         string `query:"GetUsers"`
-	GetDeviceById    string `query:"GetDeviceById"`
-	GetDevices       string `query:"GetDevices"`
-	UpdateUser       string `query:"UpdateUser"`
-	DeleteUserById   string `query:"DeleteUserById"`
-	CreateDevice     string `query:"CreateDevice"`
-	UpdateDevice     string `query:"UpdateDevice"`
-	DeleteDeviceById string `query:"DeleteDeviceById"`
+	InitDb                  string `query:"InitDb"`
+	CreateUser              string `query:"CreateUser"`
+	GetUserById             string `query:"GetUserById"`
+	GetUsers                string `query:"GetUsers"`
+	GetDeviceById           string `query:"GetDeviceById"`
+	GetDevices              string `query:"GetDevices"`
+	UpdateUser              string `query:"UpdateUser"`
+	DeleteUserById          string `query:"DeleteUserById"`
+	CreateDevice            string `query:"CreateDevice"`
+	UpdateDevice            string `query:"UpdateDevice"`
+	DeleteDeviceById        string `query:"DeleteDeviceById"`
+	CreateBandwidthSlot     string `query:"CreateBandwidthSlot"`
+	GetBandwidthSlotById    string `query:"GetBandwidthSlotById"`
+	GetBandwidthSlots       string `query:"GetBandwidthSlots"`
+	DeleteBandwidthSlotById string `query:"DeleteBandwidthSlotById"`
 }](dbScript)
 
 type DbConfig struct {
@@ -218,5 +222,78 @@ func (d DeviceStore) Update(device Device) error {
 func (d DeviceStore) Delete(id int) error {
 	db := d.db
 	_, err := db.Exec(Q.DeleteDeviceById, id)
+	return err
+}
+
+type BandwidthSlot struct {
+	Id       int
+	UserId   int
+	RemoteId int
+}
+
+func (slot BandwidthSlot) GetUser(userStore UserStore) (User, error) {
+	var user User
+	if slot.UserId == 0 {
+		return user, fmt.Errorf("no user assigned")
+	}
+	return userStore.Read(slot.UserId)
+}
+
+type BandwidthSlotStorage interface {
+	Create(slot *BandwidthSlot) error
+	Read(id int) (BandwidthSlot, error)
+	ReadMany(pageSize, pageNumber int) ([]BandwidthSlot, error)
+	Delete(id int) error
+}
+
+type BandwidthSlotStore struct {
+	db *sql.DB
+}
+
+func (s BandwidthSlotStore) Create(slot *BandwidthSlot) error {
+	db := s.db
+	return db.QueryRow(Q.CreateBandwidthSlot, slot.UserId, slot.RemoteId).Scan(&slot.Id)
+}
+
+func (s BandwidthSlotStore) Read(id int) (BandwidthSlot, error) {
+	db := s.db
+	var slot BandwidthSlot
+	err := db.QueryRow(Q.GetBandwidthSlotById, id).Scan(&slot.Id, &slot.UserId, &slot.RemoteId)
+	if err == sql.ErrNoRows {
+		return slot, fmt.Errorf("bandwidth slot not found '%d'", id)
+	}
+	return slot, err
+}
+
+func (s BandwidthSlotStore) ReadMany(pageSize, pageNumber int) ([]BandwidthSlot, error) {
+	db := s.db
+	slots := make([]BandwidthSlot, 0)
+	limit := pageSize
+	offset := 0
+	if pageNumber > 1 {
+		offset = (pageNumber - 1) * pageSize
+	}
+
+	rows, err := db.Query(Q.GetBandwidthSlots, limit, offset)
+	if err != nil {
+		return slots, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var slot BandwidthSlot
+		err := rows.Scan(&slot.Id, &slot.UserId, &slot.RemoteId)
+		if err != nil {
+			return slots, err
+		}
+		slots = append(slots, slot)
+	}
+
+	return slots, rows.Err()
+}
+
+func (s BandwidthSlotStore) Delete(id int) error {
+	db := s.db
+	_, err := db.Exec(Q.DeleteBandwidthSlotById, id)
 	return err
 }

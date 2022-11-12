@@ -2,6 +2,7 @@
 BEGIN;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS devices;
+DROP TABLE IF EXISTS bw_slots;
 CREATE TABLE users(
     id INTEGER NOT NULL PRIMARY KEY,
     name TEXT NOT NULL
@@ -11,6 +12,11 @@ CREATE TABLE devices(
     user_id INTEGER NOT NULL,
     alias TEXT DEFAULT "" NOT NULL,
     mac TEXT NOT NULL
+);
+CREATE TABLE bw_slots(
+    id INTEGER NOT NULL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    remote_id INTEGER NOT NULL
 );
 COMMIT;
 
@@ -43,3 +49,15 @@ UPDATE devices SET user_id = $2, alias = $3, mac = $4 WHERE id = $1
 
 -- query: DeleteDeviceById
 DELETE FROM devices WHERE id = $1
+
+-- query: CreateBandwidthSlot
+INSERT INTO bw_slots(user_id, remote_id) VALUES($1, $2) RETURNING id
+
+-- query: GetBandwidthSlotById
+SELECT id, user_id, remote_id FROM bw_slots WHERE id = $1
+
+-- query: GetBandwidthSlots
+SELECT id, user_id, remote_id FROM bw_slots ORDER BY id DESC LIMIT $1 OFFSET $2
+
+-- query: DeleteBandwidthSlotById
+DELETE FROM bw_slots WHERE id = $1

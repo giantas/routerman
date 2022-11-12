@@ -30,7 +30,7 @@ UPDATE users SET name = $2 WHERE id = $1
 DELETE FROM users WHERE id = $1
 
 -- query: CreateDevice
-INSERT INTO devices(user_id, alias, mac) VALUE($1, $2, $3) RETURNING id
+INSERT INTO devices(user_id, alias, mac) VALUES($1, $2, $3) RETURNING id
 
 -- query: GetDeviceById
 SELECT id, user_id, alias, mac FROM devices WHERE id = $1

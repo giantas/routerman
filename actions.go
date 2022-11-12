@@ -24,7 +24,7 @@ type Action struct {
 }
 
 var ManageUsers = &Action{
-	Name: "Manager users",
+	Name: "Manage users",
 	Action: func(in io.Reader, db *storage.Store) error {
 		actions := []*Action{
 			RegisterUser,
@@ -101,10 +101,11 @@ var ListUsers = &Action{
 }
 
 var ManageDevices = &Action{
-	Name: "Manager devices",
+	Name: "Manage devices",
 	Action: func(in io.Reader, db *storage.Store) error {
 		actions := []*Action{
 			ListDevices,
+			RegisterDevice,
 		}
 		return RunMenuActions(in, db, actions)
 	},
@@ -147,6 +148,69 @@ var ListDevices = &Action{
 				fmt.Printf("invalid choice. try again")
 				showList = false
 				continue
+			}
+			showList = true
+		}
+	},
+}
+
+var RegisterDevice = &Action{
+	Name: "Register a device",
+	Action: func(in io.Reader, db *storage.Store) error {
+		var (
+			err        error
+			users      []storage.User
+			pageNumber int  = 1
+			pageSize   int  = 5
+			showList   bool = true
+		)
+		fmt.Println("\nListing users ")
+
+		for {
+			if showList {
+				users, err = db.UserStore.ReadMany(pageSize, pageNumber)
+				if err != nil {
+					return err
+				}
+
+				if len(users) == 0 {
+					fmt.Println("no users found")
+					return nil
+				}
+
+				for i, user := range users {
+					fmt.Printf("%d. %s\n", i+1, user.Name)
+				}
+			}
+
+			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
+			choice, err := GetInput(in)
+			if err != nil {
+				return err
+			}
+
+			switch choice {
+			case "n":
+				pageNumber += 1
+			case "p":
+				pageNumber -= 1
+			case "q":
+				return nil
+			default:
+				position, err := strconv.Atoi(choice)
+				if err != nil || position > len(users) || position < 1 {
+					fmt.Printf("invalid choice. try again")
+					showList = false
+					continue
+				}
+
+				userId := users[position-1].Id
+				_, err = db.UserStore.Read(userId)
+				if err != nil {
+					return err
+				}
+
+				return AddNewDevice(in, db, userId)
 			}
 			showList = true
 		}

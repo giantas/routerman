@@ -19,22 +19,20 @@ var (
 type ActionFunc func(in io.Reader, db *storage.Store) error
 
 type Action struct {
-	Name   string
-	Action ActionFunc
+	Name     string
+	Action   ActionFunc
+	Children []*Action
 }
 
-var ManageUsers = &Action{
+var RootActionManageUsers = &Action{
 	Name: "Manage users",
-	Action: func(in io.Reader, db *storage.Store) error {
-		actions := []*Action{
-			RegisterUser,
-			ListUsers,
-		}
-		return RunMenuActions(in, db, actions)
+	Children: []*Action{
+		ActionRegisterUser,
+		ActionListUsers,
 	},
 }
 
-var RegisterUser = &Action{
+var ActionRegisterUser = &Action{
 	Name: "Register a user",
 	Action: func(in io.Reader, db *storage.Store) error {
 		fmt.Printf("Name: ")
@@ -57,7 +55,7 @@ var RegisterUser = &Action{
 	},
 }
 
-var ListUsers = &Action{
+var ActionListUsers = &Action{
 	Name: "List users",
 	Action: func(in io.Reader, db *storage.Store) error {
 		pageNumber := 1
@@ -100,18 +98,15 @@ var ListUsers = &Action{
 	},
 }
 
-var ManageDevices = &Action{
+var RootActionManageDevices = &Action{
 	Name: "Manage devices",
-	Action: func(in io.Reader, db *storage.Store) error {
-		actions := []*Action{
-			ListDevices,
-			RegisterDevice,
-		}
-		return RunMenuActions(in, db, actions)
+	Children: []*Action{
+		ActionListDevices,
+		ActionRegisterDevice,
 	},
 }
 
-var ListDevices = &Action{
+var ActionListDevices = &Action{
 	Name: "List devices",
 	Action: func(in io.Reader, db *storage.Store) error {
 		pageNumber := 1
@@ -154,7 +149,7 @@ var ListDevices = &Action{
 	},
 }
 
-var RegisterDevice = &Action{
+var ActionRegisterDevice = &Action{
 	Name: "Register a device",
 	Action: func(in io.Reader, db *storage.Store) error {
 		var (
@@ -288,7 +283,11 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action) error
 			break
 		}
 
-		err = action.Action(in, store)
+		if len(action.Children) > 0 {
+			err = RunMenuActions(in, store, action.Children)
+		} else {
+			err = action.Action(in, store)
+		}
 		if err != nil {
 			return err
 		}

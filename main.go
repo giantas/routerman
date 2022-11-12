@@ -23,8 +23,8 @@ func main() {
 	}
 
 	actions := []*Action{
-		ManageUsers,
-		ManageDevices,
+		RootActionManageUsers,
+		RootActionManageDevices,
 	}
 	err = RunMenuActions(in, db, actions)
 	if err != nil {

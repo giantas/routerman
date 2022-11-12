@@ -89,7 +89,7 @@ var ActionListUsers = &Action{
 			case "q":
 				return nil
 			default:
-				fmt.Printf("invalid choice. try again")
+				fmt.Println("invalid choice. try again")
 				showList = false
 				continue
 			}
@@ -103,6 +103,7 @@ var RootActionManageDevices = &Action{
 	Children: []*Action{
 		ActionListDevices,
 		ActionRegisterDevice,
+		ActionDeregisterDevice,
 	},
 }
 
@@ -140,7 +141,7 @@ var ActionListDevices = &Action{
 			case "q":
 				return nil
 			default:
-				fmt.Printf("invalid choice. try again")
+				fmt.Println("invalid choice. try again")
 				showList = false
 				continue
 			}
@@ -206,6 +207,66 @@ var ActionRegisterDevice = &Action{
 				}
 
 				return AddNewDevice(in, db, userId)
+			}
+			showList = true
+		}
+	},
+}
+
+var ActionDeregisterDevice = &Action{
+	Name: "Deregister a device",
+	Action: func(in io.Reader, db *storage.Store) error {
+		var (
+			pageNumber int  = 1
+			pageSize   int  = 5
+			showList   bool = true
+			devices    []storage.Device
+			err        error
+		)
+
+		for {
+			if showList {
+				devices, err = db.DeviceStore.ReadMany(pageSize, pageNumber)
+				if err != nil {
+					return err
+				}
+				if len(devices) == 0 {
+					fmt.Println("no devices found")
+					return nil
+				}
+				for i, device := range devices {
+					fmt.Printf("%d. %s(%s)\n", i+1, device.Alias, device.Mac)
+				}
+			}
+			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
+			choice, err := GetInput(in)
+			if err != nil {
+				return err
+			}
+			switch choice {
+			case "n":
+				pageNumber += 1
+			case "p":
+				pageNumber -= 1
+			case "q":
+				return nil
+			default:
+				num, err := strconv.Atoi(choice)
+				if err != nil || num < 1 || num >= len(devices) {
+					fmt.Println("invalid choice. try again")
+					showList = false
+					continue
+				}
+
+				deviceId := devices[num-1].Id
+
+				err = db.DeviceStore.Delete(deviceId)
+				if err != nil {
+					return err
+				}
+
+				fmt.Println("Device deregistered")
+				return nil
 			}
 			showList = true
 		}

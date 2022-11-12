@@ -13,6 +13,7 @@ import (
 var (
 	ErrInvalidChoice = errors.New("invalid choice")
 	ErrInvalidInput  = errors.New("invalid input")
+	ExitChoice       = 99
 )
 
 type ActionFunc func(in io.Reader, db *storage.Store) error
@@ -159,18 +160,52 @@ var Exit = &Action{
 	},
 }
 
+func AddNewDevice(in io.Reader, db *storage.Store, userId int) error {
+	for {
+		fmt.Printf("Enter mac address: ")
+		text, err := GetInput(in)
+		if err != nil {
+			return err
+		}
+		if !IsValidMacAddress(text) {
+			fmt.Println("Invalid mac address. Try again")
+			continue
+		}
+		mac := text
+
+		fmt.Printf("Enter alias: ")
+		text, err = GetInput(in)
+		if err != nil {
+			return err
+		}
+		alias := text
+		device := storage.Device{
+			UserId: userId,
+			Mac:    mac,
+			Alias:  alias,
+		}
+		err = db.DeviceStore.Create(&device)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Device added successfully %+v\n", device)
+		break
+	}
+	return nil
+}
+
 func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action) error {
-	allActions := append(actions, Exit)
 	var options strings.Builder
-	for i, action := range allActions {
+	for i, action := range actions {
 		options.WriteString(
-			fmt.Sprintf("%d. %s\n", i+1, action.Name),
+			fmt.Sprintf("%d: %s\n", i+1, action.Name),
 		)
 	}
+	options.WriteString("00: Exit")
 
 	for {
 		fmt.Printf("\nChoose an action: \n%s\n\nChoice: ", options.String())
-		choice, err := GetChoice(in, len(allActions))
+		choice, err := GetChoice(in, len(actions))
 		if err != nil {
 			if err == ErrInvalidChoice || err == ErrInvalidInput {
 				fmt.Printf("%v, try again\n", err)
@@ -180,7 +215,11 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action) error
 			}
 		}
 
-		action := allActions[choice]
+		if choice == ExitChoice {
+			break
+		}
+
+		action := actions[choice]
 		if action == Exit {
 			break
 		}
@@ -197,6 +236,9 @@ func GetChoice(in io.Reader, max int) (int, error) {
 	input, err := GetInput(in)
 	if err != nil {
 		return 0, err
+	}
+	if input == "00" {
+		return ExitChoice, err
 	}
 	num, err := strconv.Atoi(input)
 	if err != nil {

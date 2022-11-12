@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"os"
-	"strings"
 
 	"github.com/giantas/routerman/storage"
 	"github.com/giantas/tplinkapi"
@@ -30,16 +27,6 @@ func main() {
 	if err != nil {
 		exitWithError(err)
 	}
-}
-
-func GetInput(in io.Reader) (string, error) {
-	reader := bufio.NewReader(in)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-	input = strings.TrimSpace(input)
-	return input, nil
 }
 
 func routerFunctions() {
@@ -151,9 +138,4 @@ func routerFunctions() {
 	// if err != nil {
 	// 	exitWithError(err)
 	// }
-}
-
-func exitWithError(err error) {
-	fmt.Fprintln(os.Stderr, err.Error())
-	os.Exit(1)
 }

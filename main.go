@@ -1,9 +1,7 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/giantas/routerman/storage"
@@ -28,35 +26,17 @@ func main() {
 		ActionQuit,
 	}
 
-	service := tplinkapi.RouterService{
-		Username: os.Getenv("USERNAME"),
-		Password: os.Getenv("PASSWORD"),
-		Address:  os.Getenv("ADDRESS"),
-	}
+	router := NewRouterApi(
+		os.Getenv("USERNAME"),
+		os.Getenv("PASSWORD"),
+		os.Getenv("ADDRESS"),
+	)
 
-	env := NewEnv(in, db, service)
+	env := NewEnv(in, db, router)
 
 	_, err = RunMenuActions(env, actions)
 	if err != nil {
 		exitWithError(err)
-	}
-}
-
-type Env struct {
-	in     io.Reader
-	db     *storage.Store
-	ctx    Context
-	router tplinkapi.RouterService
-}
-
-func NewEnv(in io.Reader, db *sql.DB, router tplinkapi.RouterService) *Env {
-	store := storage.NewStore(db)
-
-	return &Env{
-		in:     in,
-		db:     store,
-		ctx:    make(Context),
-		router: router,
 	}
 }
 

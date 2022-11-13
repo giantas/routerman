@@ -83,7 +83,7 @@ var ActionRegisterUser = &Action{
 var ActionListUsers = &Action{
 	Name: "List users",
 	Children: []*Action{
-		ActionListUserSlots,
+		ActionListUserBandwidthSlots,
 		ActionDeregisterUser,
 		ActionRegisterDevice,
 		ActionListDevices,
@@ -164,8 +164,8 @@ var ActionListUsers = &Action{
 	},
 }
 
-var ActionListUserSlots = &Action{
-	Name: "List user slots",
+var ActionListUserBandwidthSlots = &Action{
+	Name: "List user bandwidth slots",
 	Children: []*Action{
 		ActionDeleteSlot,
 	},
@@ -182,6 +182,7 @@ var ActionListUserSlots = &Action{
 			pageNumber int  = 1
 			pageSize   int  = 5
 			showList   bool = true
+			choice     string
 		)
 		fmt.Println("\nListing user slots ")
 
@@ -192,20 +193,33 @@ var ActionListUserSlots = &Action{
 					return false, err
 				}
 
+				ids := make([]int, 0)
+				for _, slot := range slots {
+					ids = append(ids, slot.RemoteId)
+				}
+
+				entries, err := env.router.GetBwControlEntryiesByList(ids)
+				if err != nil {
+					return false, err
+				}
+
 				if len(slots) == 0 {
 					fmt.Println("no slots found")
 					return false, nil
 				}
 
-				for i, slot := range slots {
-					fmt.Printf("%d. %d:%d\n", i+1, slot.Id, slot.RemoteId)
+				for i, entry := range entries {
+					fmt.Printf(
+						"%d. %s - %s Up:%d/%d Down:%d/%d [%v]\n",
+						i+1, entry.StartIp, entry.EndIp, entry.UpMin, entry.UpMax, entry.DownMin, entry.DownMax, entry.Enabled,
+					)
 				}
 			} else {
 				fmt.Println("no more slots found")
 			}
 
 			fmt.Printf("\nSelect slot by number or scroll with n(ext)/p(revious)/q(uit): ")
-			choice, err := GetInput(env.in)
+			choice, err = GetInput(env.in)
 			if err != nil {
 				return false, err
 			}
@@ -287,6 +301,24 @@ var ActionDeleteSlot = &Action{
 		return true, nil
 	},
 	RequiresContext: []string{"slotId"},
+}
+
+var ActionListAvailableSlots = &Action{
+	Name: "List available bandwidth slots",
+	Action: func(env *Env) (bool, error) {
+		slots, err := env.router.GetAvailableBwSlots()
+		if err != nil {
+			return false, err
+		}
+		for x, slot := range slots {
+			cap, err := slot.GetCapacity()
+			if err != nil {
+				return false, err
+			}
+			fmt.Printf("%d: %s - %s [%d]\n", x, slot.StartIp, slot.EndIp, cap)
+		}
+		return false, nil
+	},
 }
 
 var RootActionManageDevices = &Action{

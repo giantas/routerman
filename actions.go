@@ -124,14 +124,14 @@ var ActionListUsers = &Action{
 			case "q":
 				return false, nil
 			default:
-				position, err := strconv.Atoi(choice)
-				if err != nil || position > len(users) || position < 1 {
+				position, err := GetChoice(choice, len(users))
+				if err == ErrInvalidChoice {
 					fmt.Println("invalid choice. try again")
 					showList = false
 					continue
 				}
 
-				user := users[position-1]
+				user := users[position]
 				userId := user.Id
 
 				fmt.Printf("Selected user '%s'\n", user.Name)
@@ -201,14 +201,14 @@ var ActionListUserSlots = &Action{
 			case "q":
 				return false, nil
 			default:
-				position, err := strconv.Atoi(choice)
-				if err != nil || position >= len(slots) || position < 1 {
-					fmt.Printf("invalid choice. try again")
+				position, err := GetChoice(choice, len(slots))
+				if err == ErrInvalidChoice {
+					fmt.Println("invalid choice. try again")
 					showList = false
 					continue
 				}
 
-				slotId := slots[position-1].Id
+				slotId := slots[position].Id
 				_, err = db.BandwidthSlotStore.Read(slotId)
 				if err != nil {
 					return false, err
@@ -351,14 +351,14 @@ var ActionRegisterDevice = &Action{
 			case "q":
 				return false, nil
 			default:
-				position, err := strconv.Atoi(choice)
-				if err != nil || position > len(users) || position < 1 {
-					fmt.Printf("invalid choice. try again")
+				position, err := GetChoice(choice, len(users))
+				if err == ErrInvalidChoice {
+					fmt.Println("invalid choice. try again")
 					showList = false
 					continue
 				}
 
-				user := users[position-1]
+				user := users[position]
 				userId := user.Id
 
 				fmt.Printf("Selected user %s", user.Name)
@@ -414,14 +414,14 @@ var ActionDeregisterDevice = &Action{
 			case "q":
 				return false, nil
 			default:
-				num, err := strconv.Atoi(choice)
-				if err != nil || num < 1 || num >= len(devices) {
+				num, err := GetChoice(choice, len(devices))
+				if err == ErrInvalidChoice {
 					fmt.Println("invalid choice. try again")
 					showList = false
 					continue
 				}
 
-				deviceId := devices[num-1].Id
+				deviceId := devices[num].Id
 
 				err = db.DeviceStore.Delete(deviceId)
 				if err != nil {
@@ -495,7 +495,7 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx C
 
 	for {
 		fmt.Printf("\nChoose an action: \n%s\n\nChoice: ", options.String())
-		choice, err := GetChoice(in, len(actions))
+		choice, err := GetChoiceInput(in, len(actions))
 		if err != nil {
 			if err == ErrInvalidChoice || err == ErrInvalidInput {
 				fmt.Printf("%v, try again\n", err)
@@ -536,7 +536,7 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx C
 	return false, nil
 }
 
-func GetChoice(in io.Reader, max int) (int, error) {
+func GetChoiceInput(in io.Reader, max int) (int, error) {
 	input, err := GetInput(in)
 	if err != nil {
 		return 0, err
@@ -544,7 +544,11 @@ func GetChoice(in io.Reader, max int) (int, error) {
 	if input == "00" {
 		return ExitChoice, err
 	}
-	num, err := strconv.Atoi(input)
+	return GetChoice(input, max)
+}
+
+func GetChoice(value string, max int) (int, error) {
+	num, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, ErrInvalidChoice
 	}

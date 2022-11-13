@@ -18,6 +18,9 @@ func main() {
 	if err != nil {
 		exitWithError(err)
 	}
+	defer db.Close()
+
+	store := storage.NewStore(db)
 
 	actions := []*Action{
 		RootActionManageUsers,
@@ -25,7 +28,7 @@ func main() {
 		ActionQuit,
 	}
 	ctx := make(Context)
-	_, err = RunMenuActions(in, db, actions, ctx)
+	_, err = RunMenuActions(in, store, actions, ctx)
 	if err != nil {
 		exitWithError(err)
 	}

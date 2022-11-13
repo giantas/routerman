@@ -55,24 +55,22 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-func ConnectDatabase(cfg DbConfig) (*Store, error) {
-	var store *Store
+func ConnectDatabase(cfg DbConfig) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", cfg.URI)
 	if err != nil {
-		return store, err
+		return db, err
 	}
 	err = db.Ping()
 	if err != nil {
-		return store, err
+		return db, err
 	}
 	if cfg.Init {
 		_, err := db.Exec(Q.InitDb)
 		if err != nil {
-			return store, err
+			return db, err
 		}
 	}
-	store = NewStore(db)
-	return store, err
+	return db, err
 }
 
 type User struct {

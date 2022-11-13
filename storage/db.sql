@@ -44,6 +44,9 @@ SELECT id, user_id, alias, mac FROM devices WHERE id = $1
 -- query: GetDevices
 SELECT id, user_id, alias, mac FROM devices ORDER BY id DESC LIMIT $1 OFFSET $2
 
+-- query: GetDevicesByUserId
+SELECT id, user_id, alias, mac FROM devices WHERE user_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3
+
 -- query: UpdateDevice
 UPDATE devices SET user_id = $2, alias = $3, mac = $4 WHERE id = $1
 
@@ -58,6 +61,9 @@ SELECT id, user_id, remote_id FROM bw_slots WHERE id = $1
 
 -- query: GetBandwidthSlots
 SELECT id, user_id, remote_id FROM bw_slots ORDER BY id DESC LIMIT $1 OFFSET $2
+
+-- query: GetBandwidthSlotsByUserId
+SELECT id, user_id, remote_id FROM bw_slots WHERE user_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3
 
 -- query: DeleteBandwidthSlotById
 DELETE FROM bw_slots WHERE id = $1

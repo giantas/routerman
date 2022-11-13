@@ -15,21 +15,23 @@ import (
 var dbScript string
 
 var Q = sqload.MustLoadFromString[struct {
-	InitDb                  string `query:"InitDb"`
-	CreateUser              string `query:"CreateUser"`
-	GetUserById             string `query:"GetUserById"`
-	GetUsers                string `query:"GetUsers"`
-	GetDeviceById           string `query:"GetDeviceById"`
-	GetDevices              string `query:"GetDevices"`
-	UpdateUser              string `query:"UpdateUser"`
-	DeleteUserById          string `query:"DeleteUserById"`
-	CreateDevice            string `query:"CreateDevice"`
-	UpdateDevice            string `query:"UpdateDevice"`
-	DeleteDeviceById        string `query:"DeleteDeviceById"`
-	CreateBandwidthSlot     string `query:"CreateBandwidthSlot"`
-	GetBandwidthSlotById    string `query:"GetBandwidthSlotById"`
-	GetBandwidthSlots       string `query:"GetBandwidthSlots"`
-	DeleteBandwidthSlotById string `query:"DeleteBandwidthSlotById"`
+	InitDb                    string `query:"InitDb"`
+	CreateUser                string `query:"CreateUser"`
+	GetUserById               string `query:"GetUserById"`
+	GetUsers                  string `query:"GetUsers"`
+	GetDeviceById             string `query:"GetDeviceById"`
+	GetDevices                string `query:"GetDevices"`
+	GetDevicesByUserId        string `query:"GetDevicesByUserId"`
+	UpdateUser                string `query:"UpdateUser"`
+	DeleteUserById            string `query:"DeleteUserById"`
+	CreateDevice              string `query:"CreateDevice"`
+	UpdateDevice              string `query:"UpdateDevice"`
+	DeleteDeviceById          string `query:"DeleteDeviceById"`
+	CreateBandwidthSlot       string `query:"CreateBandwidthSlot"`
+	GetBandwidthSlotById      string `query:"GetBandwidthSlotById"`
+	GetBandwidthSlots         string `query:"GetBandwidthSlots"`
+	GetBandwidthSlotsByUserId string `query:"GetBandwidthSlotsByUserId"`
+	DeleteBandwidthSlotById   string `query:"DeleteBandwidthSlotById"`
 }](dbScript)
 
 type DbConfig struct {
@@ -38,14 +40,16 @@ type DbConfig struct {
 }
 
 type Store struct {
-	UserStore   UserStorage
-	DeviceStore DeviceStorage
+	UserStore          UserStorage
+	DeviceStore        DeviceStorage
+	BandwidthSlotStore BandwidthSlotStorage
 }
 
 func NewStore(db *sql.DB) *Store {
 	return &Store{
-		UserStore:   UserStore{db: db},
-		DeviceStore: DeviceStore{db: db},
+		UserStore:          UserStore{db: db},
+		DeviceStore:        DeviceStore{db: db},
+		BandwidthSlotStore: BandwidthSlotStore{db: db},
 	}
 }
 
@@ -159,6 +163,7 @@ type DeviceStorage interface {
 	Create(device *Device) error
 	Read(id int) (Device, error)
 	ReadMany(pageSize, pageNumber int) ([]Device, error)
+	ReadManyByUserId(userId int, pageSize, pageNumber int) ([]Device, error)
 	Update(device Device) error
 	Delete(id int) error
 }
@@ -211,6 +216,33 @@ func (d DeviceStore) ReadMany(pageSize, pageNumber int) ([]Device, error) {
 	return devices, rows.Err()
 }
 
+func (d DeviceStore) ReadManyByUserId(userId int, pageSize, pageNumber int) ([]Device, error) {
+	db := d.db
+	devices := make([]Device, 0)
+	limit := pageSize
+	offset := 0
+	if pageNumber > 1 {
+		offset = (pageNumber - 1) * pageSize
+	}
+
+	rows, err := db.Query(Q.GetDevicesByUserId, userId, limit, offset)
+	if err != nil {
+		return devices, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var device Device
+		err := rows.Scan(&device.Id, &device.UserId, &device.Alias, &device.Mac)
+		if err != nil {
+			return devices, err
+		}
+		devices = append(devices, device)
+	}
+
+	return devices, rows.Err()
+}
+
 func (d DeviceStore) Update(device Device) error {
 	db := d.db
 	_, err := db.Exec(
@@ -243,6 +275,7 @@ type BandwidthSlotStorage interface {
 	Create(slot *BandwidthSlot) error
 	Read(id int) (BandwidthSlot, error)
 	ReadMany(pageSize, pageNumber int) ([]BandwidthSlot, error)
+	ReadManyByUserId(userId int, pageSize, pageNumber int) ([]BandwidthSlot, error)
 	Delete(id int) error
 }
 
@@ -275,6 +308,33 @@ func (s BandwidthSlotStore) ReadMany(pageSize, pageNumber int) ([]BandwidthSlot,
 	}
 
 	rows, err := db.Query(Q.GetBandwidthSlots, limit, offset)
+	if err != nil {
+		return slots, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var slot BandwidthSlot
+		err := rows.Scan(&slot.Id, &slot.UserId, &slot.RemoteId)
+		if err != nil {
+			return slots, err
+		}
+		slots = append(slots, slot)
+	}
+
+	return slots, rows.Err()
+}
+
+func (s BandwidthSlotStore) ReadManyByUserId(userId int, pageSize, pageNumber int) ([]BandwidthSlot, error) {
+	db := s.db
+	slots := make([]BandwidthSlot, 0)
+	limit := pageSize
+	offset := 0
+	if pageNumber > 1 {
+		offset = (pageNumber - 1) * pageSize
+	}
+
+	rows, err := db.Query(Q.GetBandwidthSlotsByUserId, userId, limit, offset)
 	if err != nil {
 		return slots, err
 	}

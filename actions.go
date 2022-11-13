@@ -436,8 +436,8 @@ var ActionDeregisterDevice = &Action{
 	},
 }
 
-var Exit = &Action{
-	Name: "Exit",
+var Quit = &Action{
+	Name: "Quit",
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		return false, nil
 	},
@@ -483,18 +483,26 @@ func AddNewDevice(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 
 func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx Context) (bool, error) {
 	var (
-		options strings.Builder
-		goBack  bool
+		options      strings.Builder
+		goBack       bool
+		containsQuit bool = false
 	)
 	for i, action := range actions {
+		id := strconv.Itoa(i + 1)
+		if action == Quit {
+			containsQuit = true
+			id = "00"
+		}
 		options.WriteString(
-			fmt.Sprintf("%d: %s\n", i+1, action.Name),
+			fmt.Sprintf("%s: %s\n", id, action.Name),
 		)
 	}
-	options.WriteString("00: Exit")
+	if !containsQuit {
+		options.WriteString("00: Back\n")
+	}
 
 	for {
-		fmt.Printf("\nChoose an action: \n%s\n\nChoice: ", options.String())
+		fmt.Printf("Choose an action: \n%s\n\nChoice: ", options.String())
 		choice, err := GetChoiceInput(in, len(actions))
 		if err != nil {
 			if err == ErrInvalidChoice || err == ErrInvalidInput {
@@ -510,7 +518,7 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx C
 		}
 
 		action := actions[choice]
-		if action == Exit {
+		if action == Quit {
 			break
 		}
 

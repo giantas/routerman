@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"unicode"
 )
 
 var macAddressRegex = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
@@ -28,4 +30,41 @@ func GetInput(in io.Reader) (string, error) {
 func exitWithError(err error) {
 	fmt.Fprintln(os.Stderr, err.Error())
 	os.Exit(1)
+}
+
+func GetChoiceInput(in io.Reader, max int) (int, error) {
+	input, err := GetInput(in)
+	if err != nil {
+		return 0, err
+	}
+	if ToLowerCaseChar(input) == "b" {
+		return ExitChoice, err
+	}
+	if ToLowerCaseChar(input) == "q" {
+		return QuitChoice, err
+	}
+	return GetChoice(input, max)
+}
+
+func GetChoice(value string, max int) (int, error) {
+	num, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, ErrInvalidChoice
+	}
+	if num < 1 || num > max {
+		return 0, ErrInvalidChoice
+	}
+	return num - 1, err
+}
+
+func ToLowerCaseChar(char string) string {
+	r := []rune(char)
+	if len(r) == 0 {
+		return char
+	}
+	firstChar := unicode.ToLower(r[0])
+	if len(r) == 1 {
+		return string(firstChar)
+	}
+	return string(firstChar) + string(r[0:])
 }

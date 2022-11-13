@@ -14,6 +14,7 @@ var (
 	ErrInvalidChoice = errors.New("invalid choice")
 	ErrInvalidInput  = errors.New("invalid input")
 	ExitChoice       = 99
+	QuitChoice       = 999
 )
 
 type Context map[string]int
@@ -433,7 +434,7 @@ var ActionDeregisterDevice = &Action{
 	},
 }
 
-var Quit = &Action{
+var ActionQuit = &Action{
 	Name: "Quit",
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		return false, nil
@@ -441,6 +442,10 @@ var Quit = &Action{
 }
 
 func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx Context) (bool, error) {
+	if QuitProgram(ctx) {
+		return true, nil
+	}
+
 	var (
 		options      strings.Builder
 		goBack       bool
@@ -448,16 +453,17 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx C
 	)
 	for i, action := range actions {
 		id := strconv.Itoa(i + 1)
-		if action == Quit {
+		if action == ActionQuit {
 			containsQuit = true
-			id = "00"
+			id = "Q"
 		}
 		options.WriteString(
 			fmt.Sprintf("%s: %s\n", id, action.Name),
 		)
 	}
 	if !containsQuit {
-		options.WriteString("00: Back\n")
+		options.WriteString("B: Back\n")
+		options.WriteString("Q: Quit\n")
 	}
 
 	for {
@@ -476,8 +482,14 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx C
 			break
 		}
 
+		if choice == QuitChoice {
+			ctx.Set("quit", 1)
+			break
+		}
+
 		action := actions[choice]
-		if action == Quit {
+		if action == ActionQuit {
+			ctx.Set("quit", 1)
 			break
 		}
 
@@ -491,6 +503,10 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx C
 		children := action.GetValidChildren(ctx)
 		if len(children) > 0 {
 			goBack, err = RunMenuActions(in, store, children, ctx)
+			if QuitProgram(ctx) {
+				break
+			}
+
 			if err != nil {
 				return false, err
 			}
@@ -503,24 +519,7 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx C
 	return false, nil
 }
 
-func GetChoiceInput(in io.Reader, max int) (int, error) {
-	input, err := GetInput(in)
-	if err != nil {
-		return 0, err
-	}
-	if input == "00" {
-		return ExitChoice, err
-	}
-	return GetChoice(input, max)
-}
-
-func GetChoice(value string, max int) (int, error) {
-	num, err := strconv.Atoi(value)
-	if err != nil {
-		return 0, ErrInvalidChoice
-	}
-	if num < 1 || num > max {
-		return 0, ErrInvalidChoice
-	}
-	return num - 1, err
+func QuitProgram(ctx Context) bool {
+	quit := ctx["quit"]
+	return quit > 0
 }

@@ -22,7 +22,7 @@ func main() {
 	actions := []*Action{
 		RootActionManageUsers,
 		RootActionManageDevices,
-		Quit,
+		ActionQuit,
 	}
 	ctx := make(Context)
 	_, err = RunMenuActions(in, db, actions, ctx)

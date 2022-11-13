@@ -103,13 +103,17 @@ var ActionListUsers = &Action{
 				if err != nil {
 					return false, err
 				}
+
 				if len(users) == 0 {
 					fmt.Println("no users found")
 					return false, nil
 				}
+
 				for i, user := range users {
 					fmt.Printf("%d. %s\n", i+1, user.Name)
 				}
+			} else {
+				fmt.Println("no more users found")
 			}
 
 			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
@@ -120,9 +124,19 @@ var ActionListUsers = &Action{
 
 			switch choice {
 			case "n":
-				pageNumber += 1
+				if len(users) == pageSize {
+					pageNumber += 1
+					showList = true
+				} else {
+					showList = false
+				}
 			case "p":
-				pageNumber -= 1
+				if pageNumber > 1 {
+					pageNumber -= 1
+					showList = true
+				} else {
+					showList = false
+				}
 			case "q":
 				return false, nil
 			default:
@@ -146,7 +160,6 @@ var ActionListUsers = &Action{
 				ctx.Set("userId", userId)
 				return false, err
 			}
-			showList = true
 		}
 	},
 }
@@ -187,6 +200,8 @@ var ActionListUserSlots = &Action{
 				for i, slot := range slots {
 					fmt.Printf("%d. %d:%d\n", i+1, slot.Id, slot.RemoteId)
 				}
+			} else {
+				fmt.Println("no more slots found")
 			}
 
 			fmt.Printf("\nSelect slot by number or scroll with n(ext)/p(revious)/q(uit): ")
@@ -197,9 +212,19 @@ var ActionListUserSlots = &Action{
 
 			switch choice {
 			case "n":
-				pageNumber += 1
+				if len(slots) == pageSize {
+					pageNumber += 1
+					showList = true
+				} else {
+					showList = false
+				}
 			case "p":
-				pageNumber -= 1
+				if pageNumber > 1 {
+					pageNumber -= 1
+					showList = true
+				} else {
+					showList = false
+				}
 			case "q":
 				return false, nil
 			default:
@@ -219,7 +244,6 @@ var ActionListUserSlots = &Action{
 				ctx.Set("slotId", slotId)
 				return false, err
 			}
-			showList = true
 		}
 	},
 }
@@ -305,7 +329,10 @@ var ActionListDevices = &Action{
 				for i, device := range devices {
 					fmt.Printf("%d. %s(%s)\n", i+1, device.Alias, device.Mac)
 				}
+			} else {
+				fmt.Println("no more users found")
 			}
+
 			fmt.Printf("\nSelect device by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(in)
 			if err != nil {
@@ -313,9 +340,19 @@ var ActionListDevices = &Action{
 			}
 			switch choice {
 			case "n":
-				pageNumber += 1
+				if len(devices) == pageSize {
+					pageNumber += 1
+					showList = true
+				} else {
+					showList = false
+				}
 			case "p":
-				pageNumber -= 1
+				if pageNumber > 1 {
+					pageNumber -= 1
+					showList = true
+				} else {
+					showList = false
+				}
 			case "q":
 				return false, nil
 			default:
@@ -325,11 +362,11 @@ var ActionListDevices = &Action{
 					showList = false
 					continue
 				}
+
 				deviceId := devices[num].Id
 				ctx.Set("deviceId", deviceId)
 				return false, nil
 			}
-			showList = true
 		}
 	},
 }

@@ -46,6 +46,18 @@ func GetChoiceInput(in io.Reader, max int) (int, error) {
 	return GetChoice(input, max)
 }
 
+func GetIntInput(in io.Reader, defaultValue int) (int, error) {
+	input, err := GetInput(in)
+	if input == "" {
+		return defaultValue, err
+	}
+	num, err := strconv.Atoi(input)
+	if err != nil {
+		return 0, fmt.Errorf("invalid input")
+	}
+	return num, err
+}
+
 func GetChoice(value string, max int) (int, error) {
 	num, err := strconv.Atoi(value)
 	if err != nil {

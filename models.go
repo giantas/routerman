@@ -29,21 +29,31 @@ func NewEnv(in io.Reader, db *sql.DB, router *RouterApi) *Env {
 }
 
 type BwSlot struct {
-	StartIp string
-	EndIp   string
+	tplinkapi.LanConfig
 }
 
 func (slot BwSlot) GetCapacity() (int, error) {
-	start, err := tplinkapi.Ip2Int(slot.StartIp)
+	start, err := tplinkapi.Ip2Int(slot.MinAddress)
 	if err != nil {
 		return 0, err
 	}
-	stop, err := tplinkapi.Ip2Int(slot.EndIp)
+	stop, err := tplinkapi.Ip2Int(slot.MaxAddress)
 	if err != nil {
 		return 0, err
 	}
 	capacity := int(stop-start) + 1
 	return capacity, nil
+}
+
+func (slot BwSlot) GetMaxIP(numAddresses int) (string, error) {
+	var maxIP string
+	start, err := tplinkapi.Ip2Int(slot.MinAddress)
+	if err != nil {
+		return maxIP, err
+	}
+	end := start + uint32(numAddresses)
+	maxIP = tplinkapi.Int2ip(end).String()
+	return maxIP, err
 }
 
 type RouterApi struct {
@@ -59,7 +69,7 @@ func NewRouterApi(username, password, address string) *RouterApi {
 	return &RouterApi{router: router}
 }
 
-func (api RouterApi) GetAvailableBwSlots() ([]BwSlot, error) {
+func (api RouterApi) GetAvailableBandwidthSlots() ([]BwSlot, error) {
 	var slots []BwSlot
 	info, err := api.router.GetRouterInfo()
 	if err != nil {
@@ -131,18 +141,24 @@ func (api RouterApi) GetAvailableBwSlots() ([]BwSlot, error) {
 		if i == 0 {
 			start := itemString
 			slot = BwSlot{
-				StartIp: start,
-				EndIp:   start,
+				LanConfig: tplinkapi.LanConfig{
+					MinAddress: start,
+					MaxAddress: start,
+					SubnetMask: lanConfig.SubnetMask,
+				},
 			}
 		} else {
 			prevItem := ipList[i-1]
 			if prevItem == item-1 {
-				slot.EndIp = itemString
+				slot.MaxAddress = itemString
 			} else {
 				slots = append(slots, slot)
 				slot = BwSlot{
-					StartIp: itemString,
-					EndIp:   itemString,
+					LanConfig: tplinkapi.LanConfig{
+						MinAddress: itemString,
+						MaxAddress: itemString,
+						SubnetMask: lanConfig.SubnetMask,
+					},
 				}
 			}
 
@@ -154,7 +170,7 @@ func (api RouterApi) GetAvailableBwSlots() ([]BwSlot, error) {
 	return slots, nil
 }
 
-func (api RouterApi) GetBwControlEntryiesByList(ids []int) ([]tplinkapi.BandwidthControlEntry, error) {
+func (api RouterApi) GetBwControlEntriesByList(ids []int) ([]tplinkapi.BandwidthControlEntry, error) {
 	entries := make([]tplinkapi.BandwidthControlEntry, 0)
 	details, err := api.router.GetBandwidthControlDetails()
 	if err != nil {

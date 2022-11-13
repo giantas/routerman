@@ -16,12 +16,37 @@ var (
 	ExitChoice       = 99
 )
 
-type ActionFunc func(in io.Reader, db *storage.Store) error
+type Context map[string]int
+
+func (ctx Context) Set(key string, value int) {
+	ctx[key] = value
+}
+
+type ActionFunc func(in io.Reader, db *storage.Store, ctx Context) (bool, error)
 
 type Action struct {
-	Name     string
-	Action   ActionFunc
-	Children []*Action
+	Name            string
+	Action          ActionFunc
+	Children        []*Action
+	RequiresContext []string
+}
+
+func (action Action) GetValidChildren(ctx Context) []*Action {
+	actions := make([]*Action, 0)
+
+OUTER:
+	for _, action := range action.Children {
+		if len(action.RequiresContext) > 0 {
+			for _, k := range action.RequiresContext {
+				_, exists := ctx[k]
+				if !exists {
+					continue OUTER
+				}
+			}
+		}
+		actions = append(actions, action)
+	}
+	return actions
 }
 
 var RootActionManageUsers = &Action{
@@ -34,68 +59,201 @@ var RootActionManageUsers = &Action{
 
 var ActionRegisterUser = &Action{
 	Name: "Register a user",
-	Action: func(in io.Reader, db *storage.Store) error {
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		fmt.Printf("Name: ")
 		name, err := GetInput(in)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if name == "" {
-			return ErrInvalidInput
+			return false, ErrInvalidInput
 		}
 		user := &storage.User{
 			Name: name,
 		}
 		err = db.UserStore.Create(user)
 		if err != nil {
-			return err
+			return false, err
 		}
 		fmt.Printf("user %+v created", user)
-		return nil
+		return false, nil
 	},
 }
 
 var ActionListUsers = &Action{
 	Name: "List users",
-	Action: func(in io.Reader, db *storage.Store) error {
-		pageNumber := 1
-		pageSize := 5
-		showList := true
+	Children: []*Action{
+		ActionListUserSlots,
+		ActionDeregisterUser,
+	},
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
+		var (
+			pageNumber int  = 1
+			pageSize   int  = 5
+			showList   bool = true
+			users      []storage.User
+			err        error
+		)
 
 		for {
 			if showList {
-				users, err := db.UserStore.ReadMany(pageSize, pageNumber)
+				users, err = db.UserStore.ReadMany(pageSize, pageNumber)
 				if err != nil {
-					return err
+					return false, err
 				}
 				if len(users) == 0 {
 					fmt.Println("no users found")
-					return nil
+					return false, nil
 				}
 				for i, user := range users {
 					fmt.Printf("%d. %s\n", i+1, user.Name)
 				}
 			}
-			fmt.Printf("Scroll with n(ext)/p(revious)/q(uit): ")
+
+			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(in)
 			if err != nil {
-				return err
+				return false, err
 			}
+
 			switch choice {
 			case "n":
 				pageNumber += 1
 			case "p":
 				pageNumber -= 1
 			case "q":
-				return nil
+				return false, nil
 			default:
-				fmt.Println("invalid choice. try again")
-				showList = false
-				continue
+				position, err := strconv.Atoi(choice)
+				if err != nil || position > len(users) || position < 1 {
+					fmt.Println("invalid choice. try again")
+					showList = false
+					continue
+				}
+
+				user := users[position-1]
+				userId := user.Id
+
+				fmt.Printf("Selected user '%s'\n", user.Name)
+
+				_, err = db.UserStore.Read(userId)
+				if err != nil {
+					return false, err
+				}
+
+				ctx.Set("userId", userId)
+				return false, err
 			}
 			showList = true
 		}
 	},
+}
+
+var ActionListUserSlots = &Action{
+	Name: "List user slots",
+	Children: []*Action{
+		ActionDeleteSlot,
+	},
+	RequiresContext: []string{"userId"},
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
+		userId, exists := ctx["userId"]
+		if !exists {
+			return false, fmt.Errorf("user id not provided")
+		}
+
+		var (
+			err        error
+			slots      []storage.BandwidthSlot
+			pageNumber int  = 1
+			pageSize   int  = 5
+			showList   bool = true
+		)
+		fmt.Println("\nListing user slots ")
+
+		for {
+			if showList {
+				slots, err = db.BandwidthSlotStore.ReadManyByUserId(userId, pageSize, pageNumber)
+				if err != nil {
+					return false, err
+				}
+
+				if len(slots) == 0 {
+					fmt.Println("no slots found")
+					return false, nil
+				}
+
+				for i, slot := range slots {
+					fmt.Printf("%d. %d:%d\n", i+1, slot.Id, slot.RemoteId)
+				}
+			}
+
+			fmt.Printf("\nSelect slot by number or scroll with n(ext)/p(revious)/q(uit): ")
+			choice, err := GetInput(in)
+			if err != nil {
+				return false, err
+			}
+
+			switch choice {
+			case "n":
+				pageNumber += 1
+			case "p":
+				pageNumber -= 1
+			case "q":
+				return false, nil
+			default:
+				position, err := strconv.Atoi(choice)
+				if err != nil || position >= len(slots) || position < 1 {
+					fmt.Printf("invalid choice. try again")
+					showList = false
+					continue
+				}
+
+				slotId := slots[position-1].Id
+				_, err = db.BandwidthSlotStore.Read(slotId)
+				if err != nil {
+					return false, err
+				}
+
+				ctx.Set("slotId", slotId)
+				return false, err
+			}
+			showList = true
+		}
+	},
+}
+
+var ActionDeregisterUser = &Action{
+	Name:            "Deregister user",
+	RequiresContext: []string{"userId"},
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
+		userId, exists := ctx["userId"]
+		if !exists {
+			return false, fmt.Errorf("user id not provided")
+		}
+		err := db.UserStore.Delete(userId)
+		if err != nil {
+			return false, err
+		}
+		fmt.Println("user deleted")
+		delete(ctx, "userId")
+		return true, nil
+	},
+}
+
+var ActionDeleteSlot = &Action{
+	Name: "Delete slot",
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
+		slotId, exists := ctx["slotId"]
+		if !exists {
+			return false, fmt.Errorf("slot id not provided")
+		}
+		err := db.BandwidthSlotStore.Delete(slotId)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	},
+	RequiresContext: []string{"slotId"},
 }
 
 var RootActionManageDevices = &Action{
@@ -109,7 +267,7 @@ var RootActionManageDevices = &Action{
 
 var ActionListDevices = &Action{
 	Name: "List devices",
-	Action: func(in io.Reader, db *storage.Store) error {
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		pageNumber := 1
 		pageSize := 5
 		showList := true
@@ -118,11 +276,11 @@ var ActionListDevices = &Action{
 			if showList {
 				devices, err := db.DeviceStore.ReadMany(pageSize, pageNumber)
 				if err != nil {
-					return err
+					return false, err
 				}
 				if len(devices) == 0 {
 					fmt.Println("no devices found")
-					return nil
+					return false, nil
 				}
 				for i, device := range devices {
 					fmt.Printf("%d. %s(%s)\n", i+1, device.Alias, device.Mac)
@@ -131,7 +289,7 @@ var ActionListDevices = &Action{
 			fmt.Printf("Scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(in)
 			if err != nil {
-				return err
+				return false, err
 			}
 			switch choice {
 			case "n":
@@ -139,7 +297,7 @@ var ActionListDevices = &Action{
 			case "p":
 				pageNumber -= 1
 			case "q":
-				return nil
+				return false, nil
 			default:
 				fmt.Println("invalid choice. try again")
 				showList = false
@@ -152,7 +310,7 @@ var ActionListDevices = &Action{
 
 var ActionRegisterDevice = &Action{
 	Name: "Register a device",
-	Action: func(in io.Reader, db *storage.Store) error {
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		var (
 			err        error
 			users      []storage.User
@@ -166,12 +324,12 @@ var ActionRegisterDevice = &Action{
 			if showList {
 				users, err = db.UserStore.ReadMany(pageSize, pageNumber)
 				if err != nil {
-					return err
+					return false, err
 				}
 
 				if len(users) == 0 {
 					fmt.Println("no users found")
-					return nil
+					return false, nil
 				}
 
 				for i, user := range users {
@@ -182,7 +340,7 @@ var ActionRegisterDevice = &Action{
 			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(in)
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			switch choice {
@@ -191,7 +349,7 @@ var ActionRegisterDevice = &Action{
 			case "p":
 				pageNumber -= 1
 			case "q":
-				return nil
+				return false, nil
 			default:
 				position, err := strconv.Atoi(choice)
 				if err != nil || position > len(users) || position < 1 {
@@ -200,13 +358,18 @@ var ActionRegisterDevice = &Action{
 					continue
 				}
 
-				userId := users[position-1].Id
+				user := users[position-1]
+				userId := user.Id
+
+				fmt.Printf("Selected user %s", user.Name)
+
 				_, err = db.UserStore.Read(userId)
 				if err != nil {
-					return err
+					return false, err
 				}
 
-				return AddNewDevice(in, db, userId)
+				ctx["userId"] = userId
+				return AddNewDevice(in, db, ctx)
 			}
 			showList = true
 		}
@@ -215,7 +378,7 @@ var ActionRegisterDevice = &Action{
 
 var ActionDeregisterDevice = &Action{
 	Name: "Deregister a device",
-	Action: func(in io.Reader, db *storage.Store) error {
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		var (
 			pageNumber int  = 1
 			pageSize   int  = 5
@@ -228,11 +391,11 @@ var ActionDeregisterDevice = &Action{
 			if showList {
 				devices, err = db.DeviceStore.ReadMany(pageSize, pageNumber)
 				if err != nil {
-					return err
+					return false, err
 				}
 				if len(devices) == 0 {
 					fmt.Println("no devices found")
-					return nil
+					return false, nil
 				}
 				for i, device := range devices {
 					fmt.Printf("%d. %s(%s)\n", i+1, device.Alias, device.Mac)
@@ -241,7 +404,7 @@ var ActionDeregisterDevice = &Action{
 			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(in)
 			if err != nil {
-				return err
+				return false, err
 			}
 			switch choice {
 			case "n":
@@ -249,7 +412,7 @@ var ActionDeregisterDevice = &Action{
 			case "p":
 				pageNumber -= 1
 			case "q":
-				return nil
+				return false, nil
 			default:
 				num, err := strconv.Atoi(choice)
 				if err != nil || num < 1 || num >= len(devices) {
@@ -262,11 +425,11 @@ var ActionDeregisterDevice = &Action{
 
 				err = db.DeviceStore.Delete(deviceId)
 				if err != nil {
-					return err
+					return false, err
 				}
 
 				fmt.Println("Device deregistered")
-				return nil
+				return false, nil
 			}
 			showList = true
 		}
@@ -275,17 +438,21 @@ var ActionDeregisterDevice = &Action{
 
 var Exit = &Action{
 	Name: "Exit",
-	Action: func(in io.Reader, db *storage.Store) error {
-		return nil
+	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
+		return false, nil
 	},
 }
 
-func AddNewDevice(in io.Reader, db *storage.Store, userId int) error {
+func AddNewDevice(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
+	userId, exists := ctx["userId"]
+	if !exists {
+		return false, fmt.Errorf("user id not provided")
+	}
 	for {
 		fmt.Printf("Enter mac address: ")
 		text, err := GetInput(in)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if !IsValidMacAddress(text) {
 			fmt.Println("Invalid mac address. Try again")
@@ -296,7 +463,7 @@ func AddNewDevice(in io.Reader, db *storage.Store, userId int) error {
 		fmt.Printf("Enter alias: ")
 		text, err = GetInput(in)
 		if err != nil {
-			return err
+			return false, err
 		}
 		alias := text
 		device := storage.Device{
@@ -306,16 +473,19 @@ func AddNewDevice(in io.Reader, db *storage.Store, userId int) error {
 		}
 		err = db.DeviceStore.Create(&device)
 		if err != nil {
-			return err
+			return false, err
 		}
 		fmt.Printf("Device added successfully %+v\n", device)
 		break
 	}
-	return nil
+	return false, nil
 }
 
-func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action) error {
-	var options strings.Builder
+func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx Context) (bool, error) {
+	var (
+		options strings.Builder
+		goBack  bool
+	)
 	for i, action := range actions {
 		options.WriteString(
 			fmt.Sprintf("%d: %s\n", i+1, action.Name),
@@ -331,7 +501,7 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action) error
 				fmt.Printf("%v, try again\n", err)
 				continue
 			} else {
-				return err
+				return false, err
 			}
 		}
 
@@ -344,16 +514,26 @@ func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action) error
 			break
 		}
 
-		if len(action.Children) > 0 {
-			err = RunMenuActions(in, store, action.Children)
-		} else {
-			err = action.Action(in, store)
+		if action.Action != nil {
+			goBack, err = action.Action(in, store, ctx)
+			if err != nil {
+				return false, err
+			}
 		}
-		if err != nil {
-			return err
+
+		children := action.GetValidChildren(ctx)
+		if len(children) > 0 {
+			goBack, err = RunMenuActions(in, store, children, ctx)
+			if err != nil {
+				return false, err
+			}
+		}
+
+		if goBack {
+			break
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func GetChoice(in io.Reader, max int) (int, error) {

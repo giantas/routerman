@@ -23,7 +23,8 @@ func main() {
 		RootActionManageUsers,
 		RootActionManageDevices,
 	}
-	err = RunMenuActions(in, db, actions)
+	ctx := make(Context)
+	_, err = RunMenuActions(in, db, actions, ctx)
 	if err != nil {
 		exitWithError(err)
 	}

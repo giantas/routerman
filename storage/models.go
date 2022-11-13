@@ -15,23 +15,25 @@ import (
 var dbScript string
 
 var Q = sqload.MustLoadFromString[struct {
-	InitDb                    string `query:"InitDb"`
-	CreateUser                string `query:"CreateUser"`
-	GetUserById               string `query:"GetUserById"`
-	GetUsers                  string `query:"GetUsers"`
-	GetDeviceById             string `query:"GetDeviceById"`
-	GetDevices                string `query:"GetDevices"`
-	GetDevicesByUserId        string `query:"GetDevicesByUserId"`
-	UpdateUser                string `query:"UpdateUser"`
-	DeleteUserById            string `query:"DeleteUserById"`
-	CreateDevice              string `query:"CreateDevice"`
-	UpdateDevice              string `query:"UpdateDevice"`
-	DeleteDeviceById          string `query:"DeleteDeviceById"`
-	CreateBandwidthSlot       string `query:"CreateBandwidthSlot"`
-	GetBandwidthSlotById      string `query:"GetBandwidthSlotById"`
-	GetBandwidthSlots         string `query:"GetBandwidthSlots"`
-	GetBandwidthSlotsByUserId string `query:"GetBandwidthSlotsByUserId"`
-	DeleteBandwidthSlotById   string `query:"DeleteBandwidthSlotById"`
+	InitDb                      string `query:"InitDb"`
+	CreateUser                  string `query:"CreateUser"`
+	GetUserById                 string `query:"GetUserById"`
+	GetUsers                    string `query:"GetUsers"`
+	GetDeviceById               string `query:"GetDeviceById"`
+	GetDevices                  string `query:"GetDevices"`
+	GetDevicesByUserId          string `query:"GetDevicesByUserId"`
+	UpdateUser                  string `query:"UpdateUser"`
+	DeleteUserById              string `query:"DeleteUserById"`
+	CreateDevice                string `query:"CreateDevice"`
+	UpdateDevice                string `query:"UpdateDevice"`
+	DeleteDeviceById            string `query:"DeleteDeviceById"`
+	DeleteDeviceByUserId        string `query:"DeleteDeviceByUserId"`
+	CreateBandwidthSlot         string `query:"CreateBandwidthSlot"`
+	GetBandwidthSlotById        string `query:"GetBandwidthSlotById"`
+	GetBandwidthSlots           string `query:"GetBandwidthSlots"`
+	GetBandwidthSlotsByUserId   string `query:"GetBandwidthSlotsByUserId"`
+	DeleteBandwidthSlotById     string `query:"DeleteBandwidthSlotById"`
+	DeleteBandwidthSlotByUserId string `query:"DeleteBandwidthSlotByUserId"`
 }](dbScript)
 
 type DbConfig struct {
@@ -166,6 +168,7 @@ type DeviceStorage interface {
 	ReadManyByUserId(userId int, pageSize, pageNumber int) ([]Device, error)
 	Update(device Device) error
 	Delete(id int) error
+	DeleteByUserId(userId int) error
 }
 
 type DeviceStore struct {
@@ -257,6 +260,12 @@ func (d DeviceStore) Delete(id int) error {
 	return err
 }
 
+func (d DeviceStore) DeleteByUserId(userId int) error {
+	db := d.db
+	_, err := db.Exec(Q.DeleteDeviceByUserId, userId)
+	return err
+}
+
 type BandwidthSlot struct {
 	Id       int
 	UserId   int
@@ -277,6 +286,7 @@ type BandwidthSlotStorage interface {
 	ReadMany(pageSize, pageNumber int) ([]BandwidthSlot, error)
 	ReadManyByUserId(userId int, pageSize, pageNumber int) ([]BandwidthSlot, error)
 	Delete(id int) error
+	DeleteByUserId(userId int) error
 }
 
 type BandwidthSlotStore struct {
@@ -355,5 +365,10 @@ func (s BandwidthSlotStore) ReadManyByUserId(userId int, pageSize, pageNumber in
 func (s BandwidthSlotStore) Delete(id int) error {
 	db := s.db
 	_, err := db.Exec(Q.DeleteBandwidthSlotById, id)
+	return err
+}
+func (s BandwidthSlotStore) DeleteByUserId(userId int) error {
+	db := s.db
+	_, err := db.Exec(Q.DeleteBandwidthSlotByUserId, userId)
 	return err
 }

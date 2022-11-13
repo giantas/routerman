@@ -232,9 +232,16 @@ var ActionDeregisterUser = &Action{
 		if !exists {
 			return false, fmt.Errorf("user id not provided")
 		}
-		err := db.UserStore.Delete(userId)
-		if err != nil {
-			return false, err
+		actions := []func(userId int) error{
+			db.BandwidthSlotStore.DeleteByUserId,
+			db.DeviceStore.DeleteByUserId,
+			db.UserStore.Delete,
+		}
+		for _, action := range actions {
+			err := action(userId)
+			if err != nil {
+				return false, err
+			}
 		}
 		fmt.Println("user deleted")
 		delete(ctx, "userId")

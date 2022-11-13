@@ -53,6 +53,9 @@ UPDATE devices SET user_id = $2, alias = $3, mac = $4 WHERE id = $1
 -- query: DeleteDeviceById
 DELETE FROM devices WHERE id = $1
 
+-- query: DeleteDeviceByUserId
+DELETE FROM devices WHERE user_id = $1
+
 -- query: CreateBandwidthSlot
 INSERT INTO bw_slots(user_id, remote_id) VALUES($1, $2) RETURNING id
 
@@ -67,3 +70,6 @@ SELECT id, user_id, remote_id FROM bw_slots WHERE user_id = $1 ORDER BY id DESC 
 
 -- query: DeleteBandwidthSlotById
 DELETE FROM bw_slots WHERE id = $1
+
+-- query: DeleteBandwidthSlotByUserId
+DELETE FROM bw_slots WHERE user_id = $1

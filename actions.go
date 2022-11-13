@@ -261,20 +261,26 @@ var RootActionManageDevices = &Action{
 	Children: []*Action{
 		ActionListDevices,
 		ActionRegisterDevice,
-		ActionDeregisterDevice,
 	},
 }
 
 var ActionListDevices = &Action{
 	Name: "List devices",
+	Children: []*Action{
+		ActionDeregisterDevice,
+	},
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
-		pageNumber := 1
-		pageSize := 5
-		showList := true
+		var (
+			pageNumber int  = 1
+			pageSize   int  = 5
+			showList   bool = true
+			devices    []storage.Device
+			err        error
+		)
 
 		for {
 			if showList {
-				devices, err := db.DeviceStore.ReadMany(pageSize, pageNumber)
+				devices, err = db.DeviceStore.ReadMany(pageSize, pageNumber)
 				if err != nil {
 					return false, err
 				}
@@ -286,7 +292,7 @@ var ActionListDevices = &Action{
 					fmt.Printf("%d. %s(%s)\n", i+1, device.Alias, device.Mac)
 				}
 			}
-			fmt.Printf("Scroll with n(ext)/p(revious)/q(uit): ")
+			fmt.Printf("\nSelect device by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(in)
 			if err != nil {
 				return false, err
@@ -299,9 +305,15 @@ var ActionListDevices = &Action{
 			case "q":
 				return false, nil
 			default:
-				fmt.Println("invalid choice. try again")
-				showList = false
-				continue
+				num, err := GetChoice(choice, len(devices))
+				if err == ErrInvalidChoice {
+					fmt.Println("invalid choice. try again")
+					showList = false
+					continue
+				}
+				deviceId := devices[num].Id
+				ctx.Set("deviceId", deviceId)
+				return false, nil
 			}
 			showList = true
 		}
@@ -377,62 +389,21 @@ var ActionRegisterDevice = &Action{
 }
 
 var ActionDeregisterDevice = &Action{
-	Name: "Deregister a device",
+	Name:            "Deregister a device",
+	RequiresContext: []string{"deviceId"},
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
-		var (
-			pageNumber int  = 1
-			pageSize   int  = 5
-			showList   bool = true
-			devices    []storage.Device
-			err        error
-		)
-
-		for {
-			if showList {
-				devices, err = db.DeviceStore.ReadMany(pageSize, pageNumber)
-				if err != nil {
-					return false, err
-				}
-				if len(devices) == 0 {
-					fmt.Println("no devices found")
-					return false, nil
-				}
-				for i, device := range devices {
-					fmt.Printf("%d. %s(%s)\n", i+1, device.Alias, device.Mac)
-				}
-			}
-			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
-			choice, err := GetInput(in)
-			if err != nil {
-				return false, err
-			}
-			switch choice {
-			case "n":
-				pageNumber += 1
-			case "p":
-				pageNumber -= 1
-			case "q":
-				return false, nil
-			default:
-				num, err := GetChoice(choice, len(devices))
-				if err == ErrInvalidChoice {
-					fmt.Println("invalid choice. try again")
-					showList = false
-					continue
-				}
-
-				deviceId := devices[num].Id
-
-				err = db.DeviceStore.Delete(deviceId)
-				if err != nil {
-					return false, err
-				}
-
-				fmt.Println("Device deregistered")
-				return false, nil
-			}
-			showList = true
+		deviceId, exists := ctx["deviceId"]
+		if !exists {
+			return false, fmt.Errorf("device id not provided")
 		}
+		err := db.DeviceStore.Delete(deviceId)
+		if err != nil {
+			return false, err
+		}
+
+		fmt.Println("Device deregistered")
+		delete(ctx, "deviceId")
+		return true, nil
 	},
 }
 

@@ -85,6 +85,7 @@ var ActionListUsers = &Action{
 	Children: []*Action{
 		ActionListUserSlots,
 		ActionDeregisterUser,
+		ActionRegisterDevice,
 	},
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		var (
@@ -260,7 +261,6 @@ var RootActionManageDevices = &Action{
 	Name: "Manage devices",
 	Children: []*Action{
 		ActionListDevices,
-		ActionRegisterDevice,
 	},
 }
 
@@ -321,70 +321,45 @@ var ActionListDevices = &Action{
 }
 
 var ActionRegisterDevice = &Action{
-	Name: "Register a device",
+	Name:            "Register a device",
+	RequiresContext: []string{"userId"},
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
-		var (
-			err        error
-			users      []storage.User
-			pageNumber int  = 1
-			pageSize   int  = 5
-			showList   bool = true
-		)
-		fmt.Println("\nListing users ")
+		userId, exists := ctx["userId"]
+		if !exists {
+			return false, fmt.Errorf("user id not provided")
+		}
 
 		for {
-			if showList {
-				users, err = db.UserStore.ReadMany(pageSize, pageNumber)
-				if err != nil {
-					return false, err
-				}
-
-				if len(users) == 0 {
-					fmt.Println("no users found")
-					return false, nil
-				}
-
-				for i, user := range users {
-					fmt.Printf("%d. %s\n", i+1, user.Name)
-				}
-			}
-
-			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
-			choice, err := GetInput(in)
+			fmt.Printf("Enter mac address: ")
+			text, err := GetInput(in)
 			if err != nil {
 				return false, err
 			}
-
-			switch choice {
-			case "n":
-				pageNumber += 1
-			case "p":
-				pageNumber -= 1
-			case "q":
-				return false, nil
-			default:
-				position, err := GetChoice(choice, len(users))
-				if err == ErrInvalidChoice {
-					fmt.Println("invalid choice. try again")
-					showList = false
-					continue
-				}
-
-				user := users[position]
-				userId := user.Id
-
-				fmt.Printf("Selected user %s", user.Name)
-
-				_, err = db.UserStore.Read(userId)
-				if err != nil {
-					return false, err
-				}
-
-				ctx["userId"] = userId
-				return AddNewDevice(in, db, ctx)
+			if !IsValidMacAddress(text) {
+				fmt.Println("Invalid mac address. Try again")
+				continue
 			}
-			showList = true
+			mac := text
+
+			fmt.Printf("Enter alias: ")
+			text, err = GetInput(in)
+			if err != nil {
+				return false, err
+			}
+			alias := text
+			device := storage.Device{
+				UserId: userId,
+				Mac:    mac,
+				Alias:  alias,
+			}
+			err = db.DeviceStore.Create(&device)
+			if err != nil {
+				return false, err
+			}
+			fmt.Printf("Device added successfully %+v\n", device)
+			break
 		}
+		return false, nil
 	},
 }
 
@@ -412,44 +387,6 @@ var Quit = &Action{
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		return false, nil
 	},
-}
-
-func AddNewDevice(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
-	userId, exists := ctx["userId"]
-	if !exists {
-		return false, fmt.Errorf("user id not provided")
-	}
-	for {
-		fmt.Printf("Enter mac address: ")
-		text, err := GetInput(in)
-		if err != nil {
-			return false, err
-		}
-		if !IsValidMacAddress(text) {
-			fmt.Println("Invalid mac address. Try again")
-			continue
-		}
-		mac := text
-
-		fmt.Printf("Enter alias: ")
-		text, err = GetInput(in)
-		if err != nil {
-			return false, err
-		}
-		alias := text
-		device := storage.Device{
-			UserId: userId,
-			Mac:    mac,
-			Alias:  alias,
-		}
-		err = db.DeviceStore.Create(&device)
-		if err != nil {
-			return false, err
-		}
-		fmt.Printf("Device added successfully %+v\n", device)
-		break
-	}
-	return false, nil
 }
 
 func RunMenuActions(in io.Reader, store *storage.Store, actions []*Action, ctx Context) (bool, error) {

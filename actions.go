@@ -86,6 +86,7 @@ var ActionListUsers = &Action{
 		ActionListUserSlots,
 		ActionDeregisterUser,
 		ActionRegisterDevice,
+		ActionListDevices,
 	},
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		var (
@@ -277,10 +278,16 @@ var ActionListDevices = &Action{
 			devices    []storage.Device
 			err        error
 		)
+		userId, userIdProvided := ctx["userId"]
 
 		for {
 			if showList {
-				devices, err = db.DeviceStore.ReadMany(pageSize, pageNumber)
+				if userIdProvided && userId != 0 {
+					devices, err = db.DeviceStore.ReadManyByUserId(userId, pageSize, pageNumber)
+				} else {
+					devices, err = db.DeviceStore.ReadMany(pageSize, pageNumber)
+				}
+
 				if err != nil {
 					return false, err
 				}
@@ -364,7 +371,7 @@ var ActionRegisterDevice = &Action{
 }
 
 var ActionDeregisterDevice = &Action{
-	Name:            "Deregister a device",
+	Name:            "Deregister device",
 	RequiresContext: []string{"deviceId"},
 	Action: func(in io.Reader, db *storage.Store, ctx Context) (bool, error) {
 		deviceId, exists := ctx["deviceId"]

@@ -19,3 +19,4 @@
 .envrc
 bin/
 *.db
+__debug_bin

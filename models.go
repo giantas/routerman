@@ -189,3 +189,47 @@ func (api RouterApi) GetBwControlEntriesByList(ids []int) ([]tplinkapi.Bandwidth
 	}
 	return entries, err
 }
+
+func (api RouterApi) GetUnusedIPAddress(slotId int) (string, error) {
+	entry, err := api.router.GetBandwidthControlEntry(slotId)
+	if err != nil {
+		return "", err
+	}
+	reservations, err := api.router.GetAddressReservations()
+	if err != nil {
+		return "", err
+	}
+	startIpInt, err := tplinkapi.Ip2Int(entry.StartIp)
+	if err != nil {
+		return "", err
+	}
+	endIpInt, err := tplinkapi.Ip2Int(entry.EndIp)
+	if err != nil {
+		return "", err
+	}
+	ipRange := make(map[uint32]bool, 0)
+	for i := startIpInt; i <= endIpInt; i++ {
+		ipRange[i] = true
+	}
+	for _, resv := range reservations {
+		ipInt, err := tplinkapi.Ip2Int(resv.IP)
+		if err != nil {
+			return "", err
+		}
+		_, exists := ipRange[ipInt]
+		if exists {
+			delete(ipRange, ipInt)
+		}
+	}
+	validIps := make([]uint32, 0)
+	for k, _ := range ipRange {
+		validIps = append(validIps, k)
+	}
+	sort.Slice(validIps, func(i, j int) bool {
+		return validIps[i] < validIps[j]
+	})
+	if len(validIps) == 0 {
+		return "", fmt.Errorf("no ip addresses available")
+	}
+	return tplinkapi.Int2ip(validIps[0]).String(), err
+}

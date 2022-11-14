@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/giantas/routerman/storage"
+	"github.com/giantas/tplinkapi"
 )
 
 var (
@@ -558,7 +559,22 @@ var ActionRegisterDevice = &Action{
 			return false, fmt.Errorf("user id not provided")
 		}
 
-		_, err := env.db.UserStore.Read(userId)
+		slotId, exists := env.ctx["slotId"]
+		if !exists {
+			return false, fmt.Errorf("slot id not provided")
+		}
+
+		slot, err := env.db.BandwidthSlotStore.Read(slotId)
+		if err != nil {
+			return false, err
+		}
+
+		ipAddress, err := env.router.GetUnusedIPAddress(slot.RemoteId)
+		if err != nil {
+			return false, err
+		}
+
+		_, err = env.db.UserStore.Read(userId)
 		if err != nil {
 			return false, err
 		}
@@ -580,10 +596,24 @@ var ActionRegisterDevice = &Action{
 			if err != nil {
 				return false, err
 			}
+
+			client := tplinkapi.Client{
+				IP:  ipAddress,
+				Mac: mac,
+			}
+			if client.IsMulticast() {
+				return false, fmt.Errorf("multicast addresses not allowed")
+			}
+
+			err = env.router.router.MakeIpAddressReservation(client)
+			if err != nil {
+				return false, err
+			}
+
 			alias := text
 			device := storage.Device{
 				UserId: userId,
-				Mac:    mac,
+				Mac:    client.Mac,
 				Alias:  alias,
 			}
 			err = env.db.DeviceStore.Create(&device)
@@ -605,7 +635,18 @@ var ActionDeregisterDevice = &Action{
 		if !exists {
 			return false, fmt.Errorf("device id not provided")
 		}
-		err := env.db.DeviceStore.Delete(deviceId)
+
+		device, err := env.db.DeviceStore.Read(deviceId)
+		if err != nil {
+			return false, err
+		}
+
+		err = env.router.router.DeleteIpAddressReservation(device.Mac)
+		if err != nil {
+			return false, err
+		}
+
+		err = env.db.DeviceStore.Delete(deviceId)
 		if err != nil {
 			return false, err
 		}

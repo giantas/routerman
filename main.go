@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/giantas/routerman/storage"
+	"github.com/omushpapa/routerman/storage"
 )
 
 func main() {

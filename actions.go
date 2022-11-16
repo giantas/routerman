@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/giantas/routerman/storage"
-	"github.com/giantas/tplinkapi"
+	"github.com/omushpapa/routerman/storage"
+	"github.com/omushpapa/tplinkapi"
 )
 
 var (

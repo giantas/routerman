@@ -1,6 +1,6 @@
-github.com/giantas/tplinkapi v0.3.1-0.20221113155230-9eb2802da284 h1:gv7VzTiCakOvvfQ9ePpPamxPRiCzSGXkXOWYHrAM110=
-github.com/giantas/tplinkapi v0.3.1-0.20221113155230-9eb2802da284/go.mod h1:EN75b2BFKa4kaaabGwSBAtO9w5rnIR5GbwlUJ5Wjv58=
 github.com/mattn/go-sqlite3 v1.14.16 h1:yOQRA0RpS5PFz/oikGwBEqvAWhWg5ufRz4ETLjwpU1Y=
 github.com/mattn/go-sqlite3 v1.14.16/go.mod h1:2eHXhiwb8IkHr+BDWZGa96P6+rkvnG63S2DGjv9HUNg=
 github.com/midir99/sqload v1.0.2 h1:tgllt6B9yJqwFviYrKy+qLLzHrq+mhel4h5JLCsrFRU=
 github.com/midir99/sqload v1.0.2/go.mod h1:cnv0MQz1LJLwjlT9lj2ChrxYCX5pOzl3ZMduFbkH4rg=
+github.com/omushpapa/tplinkapi v0.3.1-0.20221115061736-3e6db15db51e h1:ZFmolzjv64dOqTaiK8KwmKkFSnZxyXEknotKtipwRAc=
+github.com/omushpapa/tplinkapi v0.3.1-0.20221115061736-3e6db15db51e/go.mod h1:GVtyT4kPyEoBmk0QSUQJOHwJRYjUf8IruSBGxk4LOrE=

@@ -35,9 +35,9 @@ type ActionFunc func(env *Env) (Navigation, error)
 
 type Action struct {
 	Name            string
-	Action          ActionFunc
 	Children        []*Action
 	RequiresContext []string
+	Action          ActionFunc
 }
 
 func (action Action) GetValidChildren(ctx Context) []*Action {

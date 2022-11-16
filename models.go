@@ -222,7 +222,7 @@ func (api RouterApi) GetUnusedIPAddress(slotId int) (string, error) {
 		}
 	}
 	validIps := make([]uint32, 0)
-	for k, _ := range ipRange {
+	for k := range ipRange {
 		validIps = append(validIps, k)
 	}
 	sort.Slice(validIps, func(i, j int) bool {

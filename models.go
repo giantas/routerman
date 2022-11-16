@@ -57,21 +57,21 @@ func (slot BwSlot) GetMaxIP(numAddresses int) (string, error) {
 }
 
 type RouterApi struct {
-	router tplinkapi.RouterService
+	service tplinkapi.RouterService
 }
 
 func NewRouterApi(username, password, address string) *RouterApi {
-	router := tplinkapi.RouterService{
+	service := tplinkapi.RouterService{
 		Username: username,
 		Password: password,
 		Address:  address,
 	}
-	return &RouterApi{router: router}
+	return &RouterApi{service: service}
 }
 
 func (api RouterApi) GetAvailableBandwidthSlots() ([]BwSlot, error) {
 	var slots []BwSlot
-	info, err := api.router.GetRouterInfo()
+	info, err := api.service.GetRouterInfo()
 	if err != nil {
 		return slots, err
 	}
@@ -79,11 +79,11 @@ func (api RouterApi) GetAvailableBandwidthSlots() ([]BwSlot, error) {
 	if err != nil {
 		return slots, err
 	}
-	lanConfig, err := api.router.GetLanConfig()
+	lanConfig, err := api.service.GetLanConfig()
 	if err != nil {
 		return slots, err
 	}
-	details, err := api.router.GetBandwidthControlDetails()
+	details, err := api.service.GetBandwidthControlDetails()
 	if err != nil {
 		return slots, err
 	}
@@ -172,7 +172,7 @@ func (api RouterApi) GetAvailableBandwidthSlots() ([]BwSlot, error) {
 
 func (api RouterApi) GetBwControlEntriesByList(ids []int) ([]tplinkapi.BandwidthControlEntry, error) {
 	entries := make([]tplinkapi.BandwidthControlEntry, 0)
-	details, err := api.router.GetBandwidthControlDetails()
+	details, err := api.service.GetBandwidthControlDetails()
 	if err != nil {
 		return entries, err
 	}
@@ -191,11 +191,11 @@ func (api RouterApi) GetBwControlEntriesByList(ids []int) ([]tplinkapi.Bandwidth
 }
 
 func (api RouterApi) GetUnusedIPAddress(slotId int) (string, error) {
-	entry, err := api.router.GetBandwidthControlEntry(slotId)
+	entry, err := api.service.GetBandwidthControlEntry(slotId)
 	if err != nil {
 		return "", err
 	}
-	reservations, err := api.router.GetAddressReservations()
+	reservations, err := api.service.GetAddressReservations()
 	if err != nil {
 		return "", err
 	}

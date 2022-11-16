@@ -388,7 +388,7 @@ var ActionAssignSlot = &Action{
 					DownMin: 50,
 					DownMax: maxDown,
 				}
-				id, err := env.router.router.AddBwControlEntry(entry)
+				id, err := env.router.service.AddBwControlEntry(entry)
 				if err != nil {
 					return NEXT, err
 				}
@@ -444,7 +444,7 @@ var ActionDeleteSlot = &Action{
 		if err != nil {
 			return NEXT, err
 		}
-		err = env.router.router.DeleteBwControlEntry(slot.RemoteId)
+		err = env.router.service.DeleteBwControlEntry(slot.RemoteId)
 		if err != nil {
 			return NEXT, err
 		}
@@ -613,7 +613,7 @@ var ActionRegisterDevice = &Action{
 				return NEXT, fmt.Errorf("multicast addresses not allowed")
 			}
 
-			err = env.router.router.MakeIpAddressReservation(client)
+			err = env.router.service.MakeIpAddressReservation(client)
 			if err != nil {
 				return NEXT, err
 			}
@@ -649,7 +649,7 @@ var ActionDeregisterDevice = &Action{
 			return NEXT, err
 		}
 
-		err = env.router.router.DeleteIpAddressReservation(device.Mac)
+		err = env.router.service.DeleteIpAddressReservation(device.Mac)
 		if err != nil {
 			return NEXT, err
 		}

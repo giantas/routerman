@@ -480,6 +480,7 @@ var RootActionManageDevices = &Action{
 	Name: "Manage devices",
 	Children: []*Action{
 		ActionListDevices,
+		ActionShowConnectedDevices,
 	},
 }
 
@@ -553,6 +554,96 @@ var ActionListDevices = &Action{
 				deviceId := devices[num].Id
 				env.ctx.Set("deviceId", deviceId)
 				return NEXT, nil
+			}
+		}
+	},
+}
+
+var ActionShowConnectedDevices = &Action{
+	Name: "Show connected devices",
+	Action: func(env *Env) (Navigation, error) {
+		var (
+			pageNumber int  = 1
+			pageSize   int  = 5
+			showList   bool = true
+			stats      tplinkapi.ClientStatistics
+			err        error
+		)
+
+		stats, err = env.router.service.GetStatistics()
+		if err != nil {
+			return NEXT, err
+		}
+
+		macAddresses := make([]string, len(stats))
+		for _, stat := range stats {
+			macAddresses = append(macAddresses, stat.Mac)
+		}
+
+		devices, err := env.db.DeviceStore.ReadManyByMac(macAddresses)
+		if err != nil {
+			return NEXT, err
+		}
+
+		deviceMap := make(map[string]storage.Device)
+		for _, device := range devices {
+			deviceMap[device.Mac] = device
+		}
+
+		for {
+			if showList {
+				if len(stats) == 0 {
+					if pageNumber == 1 {
+						fmt.Println("No connected devices")
+						return NEXT, err
+					} else {
+						fmt.Println("No more devices found")
+					}
+				}
+
+				for i, stat := range stats {
+					device, exists := deviceMap[stat.Mac]
+					details := "Unknown"
+					if exists {
+						user, err := device.GetUser(env.db.UserStore)
+						if err != nil {
+							details = device.Alias
+						} else {
+							details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
+						}
+					}
+					fmt.Printf("%d. %-15s\t%s\t%s\n", i+1, stat.IP, stat.Mac, details)
+				}
+			} else {
+				fmt.Println("No more devices found")
+			}
+
+			fmt.Printf("\nScroll with n(ext)/p(revious)/q(uit): ")
+			choice, err := GetInput(env.in)
+			if err != nil {
+				return NEXT, err
+			}
+
+			switch choice {
+			case "n":
+				if len(stats) == pageSize {
+					pageNumber += 1
+					showList = true
+				} else {
+					showList = false
+				}
+			case "p":
+				if pageNumber > 1 {
+					pageNumber -= 1
+					showList = true
+				} else {
+					showList = false
+				}
+			case "q":
+				return NEXT, nil
+			default:
+				fmt.Println("Invalid input")
+				continue
 			}
 		}
 	},

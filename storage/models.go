@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "embed"
 
@@ -19,6 +20,7 @@ var Q = sqload.MustLoadFromString[struct {
 	CreateUser                  string `query:"CreateUser"`
 	GetUserById                 string `query:"GetUserById"`
 	GetUsers                    string `query:"GetUsers"`
+	GetDevicesByMac             string `query:"GetDevicesByMac"`
 	GetDeviceById               string `query:"GetDeviceById"`
 	GetDevices                  string `query:"GetDevices"`
 	GetDevicesByUserId          string `query:"GetDevicesByUserId"`
@@ -149,9 +151,13 @@ type Device struct {
 	UserId int
 	Alias  string
 	Mac    string
+	user   User
 }
 
-func (device Device) GetUser(userStore UserStore) (User, error) {
+func (device Device) GetUser(userStore UserStorage) (User, error) {
+	if device.user.Id != 0 {
+		return device.user, nil
+	}
 	var user User
 	if device.UserId == 0 {
 		return user, fmt.Errorf("no user assigned")
@@ -164,6 +170,7 @@ type DeviceStorage interface {
 	Read(id int) (Device, error)
 	ReadMany(pageSize, pageNumber int) ([]Device, error)
 	ReadManyByUserId(userId int, pageSize, pageNumber int) ([]Device, error)
+	ReadManyByMac(macAddress []string) ([]Device, error)
 	Update(device Device) error
 	Delete(id int) error
 	DeleteByUserId(userId int) error
@@ -188,6 +195,52 @@ func (d DeviceStore) Read(id int) (Device, error) {
 		return device, fmt.Errorf("device not found '%d'", id)
 	}
 	return device, err
+}
+
+func (d DeviceStore) ReadManyByMac(macAddresses []string) ([]Device, error) {
+	db := d.db
+	var (
+		devices []Device
+		query   strings.Builder
+		args    []interface{}
+		err     error
+	)
+	for i, mac := range macAddresses {
+		if i == 0 {
+			query.WriteString("(")
+		}
+		args = append(args, mac)
+		query.WriteString(fmt.Sprintf("$%d", i+1))
+
+		if i == len(macAddresses)-1 {
+			query.WriteString(")")
+		} else {
+			query.WriteString(", ")
+		}
+	}
+
+	q := fmt.Sprintf(Q.GetDevicesByMac, query.String())
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return devices, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var device Device
+		err = rows.Scan(
+			&device.Id, &device.UserId, &device.Alias, &device.Mac, &device.user.Id, &device.user.Name,
+		)
+		if err != nil {
+			return devices, err
+		}
+		devices = append(devices, device)
+	}
+	if rows.Err() != nil {
+		return devices, err
+	}
+
+	return devices, err
 }
 
 func (d DeviceStore) ReadMany(pageSize, pageNumber int) ([]Device, error) {

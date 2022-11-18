@@ -41,6 +41,15 @@ INSERT INTO devices(user_id, alias, mac) VALUES($1, $2, $3) RETURNING id
 -- query: GetDeviceById
 SELECT id, user_id, alias, mac FROM devices WHERE id = $1
 
+-- query: GetDevicesByMac
+SELECT
+    d.id, d.user_id, d.alias, d.mac, u.id, u.name
+FROM devices d
+JOIN users u ON
+    u.id = d.user_id
+WHERE
+    d.mac IN %s
+
 -- query: GetDevices
 SELECT id, user_id, alias, mac FROM devices ORDER BY id DESC LIMIT $1 OFFSET $2
 

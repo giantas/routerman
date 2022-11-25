@@ -1,10 +1,9 @@
-package main
+package cli
 
 import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,11 +24,6 @@ func GetInput(in io.Reader) (string, error) {
 	}
 	input = strings.TrimSpace(input)
 	return input, nil
-}
-
-func exitWithError(err error) {
-	fmt.Fprintln(os.Stderr, err.Error())
-	os.Exit(1)
 }
 
 func GetChoiceInput(in io.Reader, max int) (int, error) {

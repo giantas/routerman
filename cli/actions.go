@@ -717,11 +717,6 @@ var ActionRegisterDevice = &Action{
 			return NEXT, err
 		}
 
-		ipAddress, err := env.router.GetUnusedIPAddress(slot.RemoteId)
-		if err != nil {
-			return NEXT, err
-		}
-
 		_, err = env.db.UserStore.Read(userId)
 		if err != nil {
 			return NEXT, err
@@ -745,9 +740,14 @@ var ActionRegisterDevice = &Action{
 				return NEXT, err
 			}
 
-			client := tplinkapi.Client{
-				IP:  ipAddress,
-				Mac: mac,
+			ipAddress, err := env.router.GetUnusedIPAddress(slot.RemoteId)
+			if err != nil {
+				return NEXT, err
+			}
+
+			client, err := tplinkapi.NewClient(ipAddress, mac)
+			if err != nil {
+				return NEXT, err
 			}
 			if client.IsMulticast() {
 				return NEXT, fmt.Errorf("multicast addresses not allowed")
@@ -757,18 +757,30 @@ var ActionRegisterDevice = &Action{
 			if err != nil {
 				return NEXT, err
 			}
+			fmt.Printf("device assigned ip '%s'\n", client.IP)
 
 			alias := text
-			device := storage.Device{
-				UserId: userId,
-				Mac:    client.Mac,
-				Alias:  alias,
-			}
-			err = env.db.DeviceStore.Create(&device)
+			existingDevices, err := env.db.DeviceStore.ReadManyByMac([]string{client.Mac})
 			if err != nil {
 				return NEXT, err
 			}
-			fmt.Printf("Device added successfully %+v\n", device)
+
+			if len(existingDevices) == 0 {
+				device := storage.Device{
+					UserId: userId,
+					Mac:    client.Mac,
+					Alias:  alias,
+				}
+
+				err = env.db.DeviceStore.Create(&device)
+				if err != nil {
+					return NEXT, err
+				}
+				fmt.Printf("Device added successfully %+v\n", device)
+			} else {
+				fmt.Println("Device already registered")
+			}
+
 			break
 		}
 		return NEXT, nil

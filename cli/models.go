@@ -140,26 +140,24 @@ func (api RouterApi) GetAvailableBandwidthSlots() ([]BwSlot, error) {
 
 		if i == 0 {
 			start := itemString
-			slot = BwSlot{
-				LanConfig: tplinkapi.LanConfig{
-					MinAddress: start,
-					MaxAddress: start,
-					SubnetMask: lanConfig.SubnetMask,
-				},
+			cfg, err := tplinkapi.NewLanConfig(start, start, lanConfig.SubnetMask)
+			if err != nil {
+				return slots, err
 			}
+
+			slot = BwSlot{LanConfig: cfg}
 		} else {
 			prevItem := ipList[i-1]
 			if prevItem == item-1 {
 				slot.MaxAddress = itemString
 			} else {
 				slots = append(slots, slot)
-				slot = BwSlot{
-					LanConfig: tplinkapi.LanConfig{
-						MinAddress: itemString,
-						MaxAddress: itemString,
-						SubnetMask: lanConfig.SubnetMask,
-					},
+				cfg, err := tplinkapi.NewLanConfig(itemString, itemString, lanConfig.SubnetMask)
+				if err != nil {
+					return slots, err
 				}
+
+				slot = BwSlot{LanConfig: cfg}
 			}
 
 			if i == len(ipList)-1 {

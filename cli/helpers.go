@@ -2,8 +2,11 @@ package cli
 
 import (
 	"bufio"
+	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -73,4 +76,23 @@ func ToLowerCaseChar(char string) string {
 		return string(firstChar)
 	}
 	return string(firstChar) + string(r[0:])
+}
+
+func WriteToCsv(filename string, data [][]string) error {
+	err := os.Remove(filename)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+	if err = w.WriteAll(data); err != nil {
+		return err
+	}
+	return nil
 }

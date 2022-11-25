@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -481,6 +482,8 @@ var RootActionManageDevices = &Action{
 	Children: []*Action{
 		ActionListDevices,
 		ActionShowConnectedDevices,
+		ActionExportARPBindings,
+		ActionExportDhcpAddressReservations,
 	},
 }
 
@@ -646,6 +649,52 @@ var ActionShowConnectedDevices = &Action{
 				continue
 			}
 		}
+	},
+}
+
+var ActionExportARPBindings = &Action{
+	Name: "Export ARP Bindings",
+	Action: func(env *Env) (Navigation, error) {
+		var (
+			bindings []tplinkapi.ClientReservation
+			err      error
+		)
+
+		bindings, err = env.router.service.GetIpMacBindings()
+		if err != nil {
+			return NEXT, err
+		}
+
+		if len(bindings) == 0 {
+			fmt.Println("No bindings found")
+			return NEXT, nil
+		}
+
+		err = ExportBindings(bindings, "bindings.csv")
+		return NEXT, err
+	},
+}
+
+var ActionExportDhcpAddressReservations = &Action{
+	Name: "Export DHCP Address Reservations",
+	Action: func(env *Env) (Navigation, error) {
+		var (
+			reservations []tplinkapi.ClientReservation
+			err          error
+		)
+
+		reservations, err = env.router.service.GetAddressReservations()
+		if err != nil {
+			return NEXT, err
+		}
+
+		if len(reservations) == 0 {
+			fmt.Println("No reservations found")
+			return NEXT, nil
+		}
+
+		err = ExportBindings(reservations, "reservations.csv")
+		return NEXT, err
 	},
 }
 
@@ -852,4 +901,30 @@ func RunMenuActions(env *Env, actions []*Action) (Navigation, error) {
 func QuitProgram(ctx Context) bool {
 	quit := ctx["quit"]
 	return quit > 0
+}
+
+func ExportBindings(bindings []tplinkapi.ClientReservation, filename string) error {
+	sort.Slice(bindings, func(i, j int) bool {
+		return bindings[i].IpAsInt() < bindings[j].IpAsInt()
+	})
+
+	csvData := make([][]string, len(bindings)+1)
+	headers := []string{"Mac", "IP", "Enabled"}
+	csvData[0] = headers
+
+	for i, binding := range bindings {
+		enabled := "n"
+		if binding.Enabled {
+			enabled = "y"
+		}
+
+		csvData[i+1] = []string{binding.Mac, binding.IP, enabled}
+	}
+
+	if err := WriteToCsv(filename, csvData); err != nil {
+		return err
+	}
+
+	fmt.Printf("saved to '%s'\n", filename)
+	return nil
 }

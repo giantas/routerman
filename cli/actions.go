@@ -525,7 +525,7 @@ var ActionListDevices = &Action{
 					} else {
 						details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
 					}
-					fmt.Printf("%s. %s\t%s)\n", GetPaddedListItemNumber(i+1, 3), device.Mac, details)
+					fmt.Printf("%s. %s\t%s\n", GetPaddedListItemNumber(i+1, 3), device.Mac, details)
 				}
 			} else {
 				fmt.Println("no more users found")

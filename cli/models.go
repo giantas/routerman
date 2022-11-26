@@ -69,8 +69,13 @@ func NewRouterApi(username, password, address string) *RouterApi {
 	return &RouterApi{service: service}
 }
 
-func (api RouterApi) GetAvailableBandwidthSlots() ([]BwSlot, error) {
-	var slots []BwSlot
+func (api RouterApi) GetAvailableBandwidthSlots(useDhcpBounds bool) ([]BwSlot, error) {
+	var (
+		slots   []BwSlot
+		startIp uint32
+		endIp   uint32
+		err     error
+	)
 	info, err := api.service.GetRouterInfo()
 	if err != nil {
 		return slots, err
@@ -87,13 +92,23 @@ func (api RouterApi) GetAvailableBandwidthSlots() ([]BwSlot, error) {
 	if err != nil {
 		return slots, err
 	}
-	startIp, err := tplinkapi.Ip2Int(lanConfig.MinAddress)
-	if err != nil {
-		return slots, err
-	}
-	endIp, err := tplinkapi.Ip2Int(lanConfig.MaxAddress)
-	if err != nil {
-		return slots, err
+	if useDhcpBounds {
+		startIp, err = tplinkapi.Ip2Int(lanConfig.MinAddress)
+		if err != nil {
+			return slots, err
+		}
+		endIp, err = tplinkapi.Ip2Int(lanConfig.MaxAddress)
+		if err != nil {
+			return slots, err
+		}
+	} else {
+		startIp = routerIp + 1
+		prefix := lanConfig.GetPrefix()
+		if prefix == 0 {
+			return slots, fmt.Errorf("invalid subnet prefix '%d'", prefix)
+		}
+		networkSize := 1 << (32 - prefix)
+		endIp = startIp + (uint32(networkSize) - 3)
 	}
 	allIps := make(map[uint32]bool)
 	for i := startIp; i < endIp+1; i++ {

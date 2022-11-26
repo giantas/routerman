@@ -287,17 +287,40 @@ var ActionAssignSlot = &Action{
 		}
 
 		var (
-			err        error
-			slots      []BwSlot
-			pageNumber int  = 1
-			pageSize   int  = 5
-			showList   bool = true
-			choice     string
+			err           error
+			slots         []BwSlot
+			pageNumber    int  = 1
+			pageSize      int  = 5
+			showList      bool = true
+			choice        string
+			useDhcpBounds bool
 		)
+
+	BOUNDS_LOOP:
+		for {
+			fmt.Printf("Use DHCP IP bounds (y/n): ")
+			input, err := GetCharChoice(env.in, []string{"y", "n"})
+			if err != nil {
+				if err == ErrInvalidChoice {
+					continue
+				}
+				return NEXT, err
+			}
+			switch input {
+			case "y":
+				useDhcpBounds = true
+				break BOUNDS_LOOP
+			case "n":
+				useDhcpBounds = false
+				break BOUNDS_LOOP
+			default:
+				fmt.Println("Invalid choice. Try again")
+			}
+		}
 
 		for {
 			if showList {
-				slots, err = env.router.GetAvailableBandwidthSlots()
+				slots, err = env.router.GetAvailableBandwidthSlots(useDhcpBounds)
 				if err != nil {
 					return NEXT, err
 				}
@@ -462,7 +485,7 @@ var ActionDeleteSlot = &Action{
 var ActionListAvailableSlots = &Action{
 	Name: "List available bandwidth slots",
 	Action: func(env *Env) (Navigation, error) {
-		slots, err := env.router.GetAvailableBandwidthSlots()
+		slots, err := env.router.GetAvailableBandwidthSlots(true)
 		if err != nil {
 			return NEXT, err
 		}

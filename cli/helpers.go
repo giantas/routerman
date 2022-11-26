@@ -66,6 +66,23 @@ func GetChoice(value string, max int) (int, error) {
 	return num - 1, err
 }
 
+func GetCharChoice(in io.Reader, allowedValues []string) (string, error) {
+	input, err := GetInput(in)
+	if err != nil {
+		return "", err
+	}
+	if len(input) > 1 {
+		return "", ErrInvalidChoice
+	}
+	input = ToLowerCaseChar(input)
+	for _, v := range allowedValues {
+		if v == input {
+			return v, nil
+		}
+	}
+	return "", ErrInvalidChoice
+}
+
 func ToLowerCaseChar(char string) string {
 	r := []rune(char)
 	if len(r) == 0 {

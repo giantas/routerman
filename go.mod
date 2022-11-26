@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/midir99/sqload v1.0.2
-	github.com/omushpapa/tplinkapi v0.5.1
+	github.com/omushpapa/tplinkapi v0.5.2-0.20221126211659-a1b9b36de775
 	github.com/spf13/cobra v1.6.1
 )
 

@@ -116,7 +116,7 @@ var ActionListUsers = &Action{
 				if len(users) == 0 {
 					if pageNumber == 1 {
 						fmt.Println("no users found")
-						return NEXT, nil
+						return REPEAT, nil
 					} else {
 						fmt.Println("no more users found")
 					}

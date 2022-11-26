@@ -86,6 +86,6 @@ func init() {
 }
 
 func exitWithError(err error) {
-	fmt.Fprintln(os.Stderr, err.Error())
+	fmt.Fprintln(os.Stderr, "error: ", err.Error())
 	os.Exit(1)
 }

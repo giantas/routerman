@@ -749,9 +749,9 @@ var ActionRegisterDevice = &Action{
 			if err != nil {
 				return NEXT, err
 			}
-			if client.IsMulticast() {
-				return NEXT, fmt.Errorf("multicast addresses not allowed")
-			}
+			// if client.IsMulticast() {
+			// 	return NEXT, fmt.Errorf("multicast addresses not allowed")
+			// }
 
 			err = env.router.service.MakeIpAddressReservation(client)
 			if err != nil {

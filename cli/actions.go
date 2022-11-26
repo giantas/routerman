@@ -374,6 +374,42 @@ var ActionAssignSlot = &Action{
 					return NEXT, fmt.Errorf("invalid choice")
 				}
 				slot := slots[position]
+
+				fmt.Printf("Enter start IP [%s]: ", slot.MinAddress)
+				startIPText, err := GetInput(env.in)
+				if err != nil {
+					return NEXT, err
+				}
+				var startIP string
+				if startIPText == "" {
+					startIP = slot.MinAddress
+				} else {
+					if !tplinkapi.IsValidIPv4Address(startIPText) {
+						return REPEAT, fmt.Errorf("invalid IPv4 address")
+					}
+					startIPInt, err := tplinkapi.Ip2Int(startIPText)
+					if err != nil {
+						return NEXT, err
+					}
+					minIPInt, err := tplinkapi.Ip2Int(slot.MinAddress)
+					if err != nil {
+						return NEXT, err
+					}
+					if startIPInt < minIPInt {
+						fmt.Printf("Given start IP is below range. Try again")
+						return REPEAT, nil
+					}
+					maxIPInt, err := tplinkapi.Ip2Int(slot.MaxAddress)
+					if err != nil {
+						return NEXT, err
+					}
+					if startIPInt > maxIPInt {
+						fmt.Printf("Given start IP is above range. Try again")
+						return REPEAT, nil
+					}
+					startIP = startIPText
+				}
+
 				capacity, _ := slot.GetCapacity()
 				fmt.Printf("Enter number of devices [Default %d]: ", capacity)
 				num, err := GetIntInput(env.in, capacity)
@@ -384,7 +420,7 @@ var ActionAssignSlot = &Action{
 					return NEXT, fmt.Errorf("invalid number")
 				}
 
-				endIP, err := slot.GetMaxIP(num)
+				endIP, err := slot.GetMaxIP(startIP, num)
 				if err != nil {
 					return NEXT, err
 				}
@@ -405,7 +441,7 @@ var ActionAssignSlot = &Action{
 
 				entry := tplinkapi.BandwidthControlEntry{
 					Enabled: true,
-					StartIp: slot.MinAddress,
+					StartIp: startIP,
 					EndIp:   endIP,
 					UpMin:   50,
 					UpMax:   maxUp,

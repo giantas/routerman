@@ -45,9 +45,9 @@ func (slot BwSlot) GetCapacity() (int, error) {
 	return capacity, nil
 }
 
-func (slot BwSlot) GetMaxIP(numAddresses int) (string, error) {
+func (slot BwSlot) GetMaxIP(startIP string, numAddresses int) (string, error) {
 	var maxIP string
-	start, err := tplinkapi.Ip2Int(slot.MinAddress)
+	start, err := tplinkapi.Ip2Int(startIP)
 	if err != nil {
 		return maxIP, err
 	}

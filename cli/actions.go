@@ -518,7 +518,14 @@ var ActionListDevices = &Action{
 					return NEXT, nil
 				}
 				for i, device := range devices {
-					fmt.Printf("%d. %s(%s)\n", i+1, device.Alias, device.Mac)
+					user, err := device.GetUser(env.db.UserStore)
+					var details string
+					if err != nil {
+						details = device.Alias
+					} else {
+						details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
+					}
+					fmt.Printf("%s. %s\t%s)\n", GetPaddedListItemNumber(i+1, 3), device.Mac, details)
 				}
 			} else {
 				fmt.Println("no more users found")

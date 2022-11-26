@@ -868,6 +868,7 @@ var ActionBlockDevice = &Action{
 		if err != nil {
 			return NEXT, nil
 		}
+		mac = strings.ToUpper(mac)
 		if !IsValidMacAddress(mac) {
 			fmt.Println("invalid mac address")
 			return NEXT, nil
@@ -886,6 +887,7 @@ var ActionUnblockDevice = &Action{
 		if err != nil {
 			return NEXT, nil
 		}
+		mac = strings.ToUpper(mac)
 		if !IsValidMacAddress(mac) {
 			fmt.Println("invalid mac address")
 			return NEXT, nil

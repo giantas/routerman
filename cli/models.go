@@ -262,7 +262,7 @@ func (api RouterApi) BlockDevice(macAddress string) error {
 	}
 
 	if host.Id == 0 {
-		host, err := tplinkapi.NewMacAddressAccessControlHost(macAddress)
+		host, err = tplinkapi.NewMacAddressAccessControlHost(macAddress)
 		if err != nil {
 			return err
 		}

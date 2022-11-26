@@ -52,6 +52,7 @@ var cliCmd = &cobra.Command{
 		actions := []*cli.Action{
 			cli.RootActionManageUsers,
 			cli.RootActionManageDevices,
+			cli.RootActionManageInternetAccess,
 			cli.ActionQuit,
 		}
 

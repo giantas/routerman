@@ -817,6 +817,78 @@ var ActionDeregisterDevice = &Action{
 	},
 }
 
+var RootActionManageInternetAccess = &Action{
+	Name: "Manage internet access",
+	Children: []*Action{
+		ActionShowConnectedDevices,
+		ActionListBlockedDevices,
+		ActionBlockDevice,
+		ActionUnblockDevice,
+	},
+}
+
+var ActionListBlockedDevices = &Action{
+	Name: "Show blocked devices",
+	Action: func(env *Env) (Navigation, error) {
+		addresses, err := env.router.GetBlockedDevices()
+		if err != nil {
+			return NEXT, err
+		}
+
+		if len(addresses) == 0 {
+			fmt.Println("no blocked devices found")
+			return NEXT, nil
+		}
+
+		fmt.Println("Blocked devices:")
+		for i, address := range addresses {
+			fmt.Printf("%d: %s\n", i+1, address)
+		}
+		return NEXT, nil
+	},
+}
+
+var ActionBlockDevice = &Action{
+	Name: "Block device",
+	Action: func(env *Env) (Navigation, error) {
+		fmt.Printf("Enter devic mac address: ")
+		mac, err := GetInput(env.in)
+		if err != nil {
+			return NEXT, nil
+		}
+		if !IsValidMacAddress(mac) {
+			fmt.Println("invalid mac address")
+			return NEXT, nil
+		}
+
+		err = env.router.BlockDevice(mac)
+		return NEXT, err
+	},
+}
+
+var ActionUnblockDevice = &Action{
+	Name: "Unblock device",
+	Action: func(env *Env) (Navigation, error) {
+		fmt.Printf("Enter devic mac address: ")
+		mac, err := GetInput(env.in)
+		if err != nil {
+			return NEXT, nil
+		}
+		if !IsValidMacAddress(mac) {
+			fmt.Println("invalid mac address")
+			return NEXT, nil
+		}
+
+		err = env.router.UnblockDevice(mac)
+		if err != nil {
+			return NEXT, err
+		}
+
+		fmt.Printf("device '%s' unblocked", mac)
+		return NEXT, err
+	},
+}
+
 var ActionQuit = &Action{
 	Name: "Quit",
 	Action: func(env *Env) (Navigation, error) {

@@ -231,3 +231,137 @@ func (api RouterApi) GetUnusedIPAddress(slotId int) (string, error) {
 	}
 	return tplinkapi.Int2ip(validIps[0]).String(), err
 }
+
+func (api RouterApi) BlockDevice(macAddress string) error {
+	if !IsValidMacAddress(macAddress) {
+		return fmt.Errorf("invalid mac address")
+	}
+
+	cfg := tplinkapi.InternetAccessControl{
+		Enabled:     true,
+		DefaultDeny: false,
+	}
+	if err := api.service.ToggleInternetAccessControl(cfg); err != nil {
+		return fmt.Errorf("error while toggling internet access '%v' ", err)
+	}
+
+	hosts, err := api.service.GetAccessControlHosts()
+	if err != nil {
+		return err
+	}
+
+	var host tplinkapi.MacAddressAccessControlHost
+	deviceHosts := hosts[tplinkapi.MacAddressHostType]
+	for _, deviceHost := range deviceHosts {
+		if d, ok := deviceHost.(tplinkapi.MacAddressAccessControlHost); ok {
+			if d.Mac == macAddress {
+				host = d
+				break
+			}
+		}
+	}
+
+	if host.Id == 0 {
+		host, err := tplinkapi.NewMacAddressAccessControlHost(macAddress)
+		if err != nil {
+			return err
+		}
+
+		if _, err = api.service.AddAccessControlHost(host); err != nil {
+			return fmt.Errorf("error while adding access control host '%v' ", err)
+		}
+	}
+
+	if _, err = api.service.AddAccessControlRule(host); err != nil {
+		return fmt.Errorf("error while adding access control rule '%v' ", err)
+	}
+	fmt.Printf("device '%s' blocked\n", macAddress)
+	return nil
+}
+
+func (api RouterApi) UnblockDevice(macAddress string) error {
+	if !IsValidMacAddress(macAddress) {
+		return fmt.Errorf("invalid mac address")
+	}
+
+	hosts, err := api.service.GetAccessControlHosts()
+	if err != nil {
+		return err
+	}
+
+	var host tplinkapi.MacAddressAccessControlHost
+	validHosts := hosts[tplinkapi.MacAddressHostType]
+	for _, v := range validHosts {
+		if h, ok := v.(tplinkapi.MacAddressAccessControlHost); ok {
+			if h.Mac == macAddress {
+				host = h
+				break
+			}
+		}
+	}
+
+	if host.Id == 0 {
+		return fmt.Errorf("host with mac '%s' not found", macAddress)
+	}
+
+	rules, err := api.service.GetAccessControlRules()
+	if err != nil {
+		return err
+	}
+
+	hostRef := host.GetRef()
+
+	var rule tplinkapi.AccessControlRule
+	for _, r := range rules {
+		if r.InternalHostRef == hostRef {
+			rule = r
+			break
+		}
+	}
+
+	if rule.Id == 0 {
+		return fmt.Errorf("rule for host with ref '%s' not found", hostRef)
+	}
+
+	err = api.service.DeleteAccessControlRule(rule.Id)
+	return err
+}
+
+func (api RouterApi) GetBlockedDevices() ([]string, error) {
+	devices := make([]string, 0)
+
+	hosts, err := api.service.GetAccessControlHosts()
+	if err != nil {
+		return devices, err
+	}
+
+	if len(hosts) == 0 {
+		return devices, nil
+	}
+
+	rules, err := api.service.GetAccessControlRules()
+	if err != nil {
+		return devices, err
+	}
+
+	if len(rules) == 0 {
+		return devices, nil
+	}
+
+	refs := make(map[string]bool, 0)
+	for _, rule := range rules {
+		refs[rule.InternalHostRef] = true
+	}
+
+	deviceHosts := hosts[tplinkapi.MacAddressHostType]
+	for _, host := range deviceHosts {
+		if h, ok := host.(tplinkapi.MacAddressAccessControlHost); ok {
+			ref := h.GetRef()
+
+			if _, ok := refs[ref]; ok {
+				devices = append(devices, h.Mac)
+			}
+		}
+	}
+	return devices, nil
+}

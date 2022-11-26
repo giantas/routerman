@@ -96,3 +96,8 @@ func WriteToCsv(filename string, data [][]string) error {
 	}
 	return nil
 }
+
+func GetPaddedListItemNumber(value, padding int) string {
+	spacing := "%" + fmt.Sprintf("%ds", padding)
+	return fmt.Sprintf(spacing, fmt.Sprintf("%d", value))
+}

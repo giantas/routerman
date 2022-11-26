@@ -615,7 +615,7 @@ var ActionShowConnectedDevices = &Action{
 							details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
 						}
 					}
-					fmt.Printf("%d. %-15s\t%s\t%s\n", i+1, stat.IP, stat.Mac, details)
+					fmt.Printf("%s. %-15s\t%s\t%s\n", GetPaddedListItemNumber(i+1, 4), stat.IP, stat.Mac, details)
 				}
 			} else {
 				fmt.Println("No more devices found")
@@ -840,9 +840,21 @@ var ActionListBlockedDevices = &Action{
 			return NEXT, nil
 		}
 
+		devices, err := env.db.DeviceStore.ReadManyByMac(addresses)
+		if err != nil {
+			return NEXT, err
+		}
+
 		fmt.Println("Blocked devices:")
-		for i, address := range addresses {
-			fmt.Printf("%d: %s\n", i+1, address)
+		for i, device := range devices {
+			user, err := device.GetUser(env.db.UserStore)
+			var details string
+			if err != nil {
+				details = device.Alias
+			} else {
+				details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
+			}
+			fmt.Printf("%s. %s(%s)\t%s\n", GetPaddedListItemNumber(i+1, 4), device.Alias, device.Mac, details)
 		}
 		return NEXT, nil
 	},
@@ -922,7 +934,7 @@ func RunMenuActions(env *Env, actions []*Action) (Navigation, error) {
 	}
 
 	for {
-		fmt.Printf("Choose an action: \n%s\n\nChoice: ", options.String())
+		fmt.Printf("\nChoose an action: \n%s\n\nChoice: ", options.String())
 		choice, err := GetChoiceInput(env.in, len(actions))
 		if err != nil {
 			if err == ErrInvalidChoice || err == ErrInvalidInput {

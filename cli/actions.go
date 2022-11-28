@@ -437,6 +437,26 @@ var ActionAssignSlot = &Action{
 					return NEXT, err
 				}
 
+				endIpInt, _ := tplinkapi.Ip2Int(endIP)
+				minIpInt := endIpInt + 1
+				dhcpConfig, err := env.router.service.GetDhcpConfiguration()
+				if err != nil {
+					return NEXT, err
+				}
+				minAddressInt, err := tplinkapi.Ip2Int(dhcpConfig.MinAddress)
+				if err != nil {
+					return NEXT, err
+				}
+				maxAddressInt, err := tplinkapi.Ip2Int(dhcpConfig.MaxAddress)
+				if err != nil {
+					return NEXT, err
+				}
+				updateDhcp := false
+				if minIpInt >= minAddressInt || minIpInt <= maxAddressInt {
+					updateDhcp = true
+					dhcpConfig.MinAddress = tplinkapi.Int2ip(minIpInt).String()
+				}
+
 				maxDown := 1000
 				fmt.Printf("Enter max download speed (kbps) [Default %d]: ", maxDown)
 				maxDown, err = GetIntInput(env.in, maxDown)
@@ -463,6 +483,13 @@ var ActionAssignSlot = &Action{
 				id, err := env.router.service.AddBwControlEntry(entry)
 				if err != nil {
 					return NEXT, err
+				}
+
+				if updateDhcp {
+					err = env.router.service.UpdateDhcpConfiguration(dhcpConfig)
+					if err != nil {
+						fmt.Printf("an error occurred while updating DHCP configuration: '%v'", err)
+					}
 				}
 				storageSlot := storage.BandwidthSlot{
 					UserId:   userId,

@@ -232,8 +232,8 @@ var ActionListUserBandwidthSlots = &Action{
 				for i, entry := range entries {
 					dataRows[i] = []string{
 						fmt.Sprintf(
-							"%d. %s - %s Up:%d/%d Down:%d/%d [%v]\n",
-							i+1, entry.StartIp, entry.EndIp, entry.UpMin, entry.UpMax, entry.DownMin, entry.DownMax, entry.Enabled,
+							"%s - %s Up:%d/%d Down:%d/%d [%v]\n",
+							entry.StartIp, entry.EndIp, entry.UpMin, entry.UpMax, entry.DownMin, entry.DownMax, entry.Enabled,
 						),
 					}
 				}

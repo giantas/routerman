@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -670,6 +671,7 @@ var ActionShowConnectedDevices = &Action{
 					}
 				}
 
+				dataRows := make([][]string, len(stats))
 				for i, stat := range stats {
 					device, exists := deviceMap[stat.Mac]
 					details := "Unknown"
@@ -681,7 +683,11 @@ var ActionShowConnectedDevices = &Action{
 							details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
 						}
 					}
-					fmt.Printf("%s. %-15s\t%s\t%s\n", GetPaddedListItemNumber(i+1, 4), stat.IP, stat.Mac, details)
+					dataRows[i] = []string{stat.IP, stat.Mac, details}
+				}
+				err = PrintTable(os.Stdout, dataRows, true, 3)
+				if err != nil {
+					return NEXT, err
 				}
 			} else {
 				fmt.Println("No more devices found")

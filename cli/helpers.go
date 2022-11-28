@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"unicode"
 )
 
@@ -117,4 +118,20 @@ func WriteToCsv(filename string, data [][]string) error {
 func GetPaddedListItemNumber(value, padding int) string {
 	spacing := "%" + fmt.Sprintf("%ds", padding)
 	return fmt.Sprintf(spacing, fmt.Sprintf("%d", value))
+}
+
+func PrintTable(out io.Writer, dataRows [][]string, numbered bool, numberPadding int) error {
+	w := tabwriter.NewWriter(out, 1, 1, 1, ' ', 0)
+	for i, row := range dataRows {
+		rowText := strings.Join(row, "\t")
+		if numbered {
+			rowText = fmt.Sprintf(
+				"%s. %s",
+				GetPaddedListItemNumber(i+1, numberPadding), rowText,
+			)
+		}
+
+		fmt.Fprintln(w, rowText)
+	}
+	return w.Flush()
 }

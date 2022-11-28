@@ -39,6 +39,7 @@ var cliCmd = &cobra.Command{
 	Short: "CLI Interface",
 	Run: func(cmd *cobra.Command, args []string) {
 		in := os.Stdin
+		out := os.Stdout
 		cfg := storage.DbConfig{
 			Init: initDb,
 			URI:  "routerman.db",
@@ -62,7 +63,7 @@ var cliCmd = &cobra.Command{
 			os.Getenv("ADDRESS"),
 		)
 
-		env := cli.NewEnv(in, db, router)
+		env := cli.NewEnv(in, out, db, router)
 
 		_, err = cli.RunMenuActions(env, actions)
 		if err != nil {

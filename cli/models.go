@@ -12,16 +12,18 @@ import (
 
 type Env struct {
 	in     io.Reader
+	out    io.Writer
 	db     *storage.Store
 	ctx    Context
 	router *RouterApi
 }
 
-func NewEnv(in io.Reader, db *sql.DB, router *RouterApi) *Env {
+func NewEnv(in io.Reader, out io.Writer, db *sql.DB, router *RouterApi) *Env {
 	store := storage.NewStore(db)
 
 	return &Env{
 		in:     in,
+		out:    out,
 		db:     store,
 		ctx:    make(Context),
 		router: router,

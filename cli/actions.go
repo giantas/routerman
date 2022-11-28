@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -685,7 +684,7 @@ var ActionShowConnectedDevices = &Action{
 					}
 					dataRows[i] = []string{stat.IP, stat.Mac, details}
 				}
-				err = PrintTable(os.Stdout, dataRows, true, 3)
+				err = PrintTable(env.out, dataRows, true, 3)
 				if err != nil {
 					return NEXT, err
 				}

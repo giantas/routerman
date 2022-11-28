@@ -122,8 +122,13 @@ var ActionListUsers = &Action{
 					}
 				}
 
+				dataRows := make([][]string, len(users))
 				for i, user := range users {
-					fmt.Printf("%d. %s\n", i+1, user.Name)
+					dataRows[i] = []string{user.Name}
+				}
+				err = PrintTable(env.out, dataRows, true, 2)
+				if err != nil {
+					return NEXT, err
 				}
 			} else {
 				fmt.Println("no more users found")
@@ -223,11 +228,18 @@ var ActionListUserBandwidthSlots = &Action{
 					return NEXT, nil
 				}
 
+				dataRows := make([][]string, len(entries))
 				for i, entry := range entries {
-					fmt.Printf(
-						"%d. %s - %s Up:%d/%d Down:%d/%d [%v]\n",
-						i+1, entry.StartIp, entry.EndIp, entry.UpMin, entry.UpMax, entry.DownMin, entry.DownMax, entry.Enabled,
-					)
+					dataRows[i] = []string{
+						fmt.Sprintf(
+							"%d. %s - %s Up:%d/%d Down:%d/%d [%v]\n",
+							i+1, entry.StartIp, entry.EndIp, entry.UpMin, entry.UpMax, entry.DownMin, entry.DownMax, entry.Enabled,
+						),
+					}
+				}
+				err = PrintTable(env.out, dataRows, true, 2)
+				if err != nil {
+					return NEXT, err
 				}
 			} else {
 				fmt.Println("no more slots found")
@@ -525,14 +537,19 @@ var ActionListAvailableSlots = &Action{
 		if err != nil {
 			return NEXT, err
 		}
+		dataRows := make([][]string, len(slots))
 		for x, slot := range slots {
 			cap, err := slot.GetCapacity()
 			if err != nil {
 				return NEXT, err
 			}
-			fmt.Printf("%d: %s - %s [%d]\n", x, slot.MinAddress, slot.MaxAddress, cap)
+			dataRows[x] = []string{
+				fmt.Sprintf("%s - %s [%d]", slot.MinAddress, slot.MaxAddress, cap),
+			}
+
 		}
-		return NEXT, nil
+		err = PrintTable(env.out, dataRows, true, 2)
+		return NEXT, err
 	},
 }
 
@@ -576,6 +593,7 @@ var ActionListDevices = &Action{
 					fmt.Println("no devices found")
 					return NEXT, nil
 				}
+				dataRows := make([][]string, len(devices))
 				for i, device := range devices {
 					user, err := device.GetUser(env.db.UserStore)
 					var details string
@@ -584,7 +602,11 @@ var ActionListDevices = &Action{
 					} else {
 						details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
 					}
-					fmt.Printf("%s. %s\t%s\n", GetPaddedListItemNumber(i+1, 3), device.Mac, details)
+					dataRows[i] = []string{device.Mac, details}
+				}
+				err = PrintTable(env.out, dataRows, true, 3)
+				if err != nil {
+					return NEXT, err
 				}
 			} else {
 				fmt.Println("no more users found")
@@ -917,6 +939,7 @@ var ActionListBlockedDevices = &Action{
 		}
 
 		fmt.Println("Blocked devices:")
+		dataRows := make([][]string, len(devices))
 		for i, device := range devices {
 			user, err := device.GetUser(env.db.UserStore)
 			var details string
@@ -925,9 +948,10 @@ var ActionListBlockedDevices = &Action{
 			} else {
 				details = fmt.Sprintf("%s\t\t%s", device.Alias, user.Name)
 			}
-			fmt.Printf("%s. %s(%s)\t%s\n", GetPaddedListItemNumber(i+1, 4), device.Alias, device.Mac, details)
+			dataRows[i] = []string{device.Alias, device.Mac, details}
 		}
-		return NEXT, nil
+		err = PrintTable(env.out, dataRows, true, 3)
+		return NEXT, err
 	},
 }
 

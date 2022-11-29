@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/omushpapa/routerman/cli"
+	"github.com/omushpapa/routerman/core"
 	"github.com/omushpapa/routerman/storage"
 	"github.com/spf13/cobra"
 )
@@ -57,13 +58,14 @@ var cliCmd = &cobra.Command{
 			cli.ActionQuit,
 		}
 
-		router := cli.NewRouterApi(
+		router := core.NewRouterApi(
 			os.Getenv("USERNAME"),
 			os.Getenv("PASSWORD"),
 			os.Getenv("ADDRESS"),
+			db,
 		)
 
-		env := cli.NewEnv(in, out, db, router)
+		env := core.NewEnv(in, out, db, router)
 
 		_, err = cli.RunMenuActions(env, actions)
 		if err != nil {

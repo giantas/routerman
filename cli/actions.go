@@ -70,7 +70,7 @@ var RootActionManageUsers = &Action{
 var ActionRegisterUser = &Action{
 	Name: "Register a user",
 	Action: func(env *Env) (Navigation, error) {
-		fmt.Printf("Name: ")
+		fmt.Fprintf(env.out, "Name: ")
 		name, err := GetInput(env.in)
 		if err != nil {
 			return NEXT, err
@@ -85,7 +85,7 @@ var ActionRegisterUser = &Action{
 		if err != nil {
 			return NEXT, err
 		}
-		fmt.Printf("user %+v created\n", user)
+		fmt.Fprintf(env.out, "user %+v created\n", user)
 		return NEXT, nil
 	},
 }
@@ -115,10 +115,10 @@ var ActionListUsers = &Action{
 
 				if len(users) == 0 {
 					if pageNumber == 1 {
-						fmt.Println("no users found")
+						fmt.Fprintln(env.out, "no users found")
 						return REPEAT, nil
 					} else {
-						fmt.Println("no more users found")
+						fmt.Fprintln(env.out, "no more users found")
 					}
 				}
 
@@ -131,10 +131,10 @@ var ActionListUsers = &Action{
 					return NEXT, err
 				}
 			} else {
-				fmt.Println("no more users found")
+				fmt.Fprintln(env.out, "no more users found")
 			}
 
-			fmt.Printf("\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
+			fmt.Fprintf(env.out, "\nSelect user by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(env.in)
 			if err != nil {
 				return NEXT, err
@@ -160,7 +160,7 @@ var ActionListUsers = &Action{
 			default:
 				position, err := GetChoice(choice, len(users))
 				if err == ErrInvalidChoice {
-					fmt.Println("invalid choice. try again")
+					fmt.Fprintln(env.out, "invalid choice. try again")
 					showList = false
 					continue
 				}
@@ -168,7 +168,7 @@ var ActionListUsers = &Action{
 				user := users[position]
 				userId := user.Id
 
-				fmt.Printf("Selected user '%s'\n", user.Name)
+				fmt.Fprintf(env.out, "Selected user '%s'\n", user.Name)
 
 				_, err = env.db.UserStore.Read(userId)
 				if err != nil {
@@ -204,7 +204,7 @@ var ActionListUserBandwidthSlots = &Action{
 			showList   bool = true
 			choice     string
 		)
-		fmt.Println("\nListing user slots ")
+		fmt.Fprintln(env.out, "\nListing user slots ")
 
 		for {
 			if showList {
@@ -224,7 +224,7 @@ var ActionListUserBandwidthSlots = &Action{
 				}
 
 				if len(slots) == 0 {
-					fmt.Println("no slots found")
+					fmt.Fprintln(env.out, "no slots found")
 					return NEXT, nil
 				}
 
@@ -242,10 +242,10 @@ var ActionListUserBandwidthSlots = &Action{
 					return NEXT, err
 				}
 			} else {
-				fmt.Println("no more slots found")
+				fmt.Fprintln(env.out, "no more slots found")
 			}
 
-			fmt.Printf("\nSelect slot by number or scroll with n(ext)/p(revious)/q(uit): ")
+			fmt.Fprintf(env.out, "\nSelect slot by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err = GetInput(env.in)
 			if err != nil {
 				return NEXT, err
@@ -271,7 +271,7 @@ var ActionListUserBandwidthSlots = &Action{
 			default:
 				position, err := GetChoice(choice, len(slots))
 				if err == ErrInvalidChoice {
-					fmt.Println("invalid choice. try again")
+					fmt.Fprintln(env.out, "invalid choice. try again")
 					showList = false
 					continue
 				}
@@ -310,7 +310,7 @@ var ActionAssignSlot = &Action{
 
 	BOUNDS_LOOP:
 		for {
-			fmt.Printf("Use DHCP IP bounds (y/n): ")
+			fmt.Fprintf(env.out, "Use DHCP IP bounds (y/n): ")
 			input, err := GetCharChoice(env.in, []string{"y", "n"})
 			if err != nil {
 				if err == ErrInvalidChoice {
@@ -326,7 +326,7 @@ var ActionAssignSlot = &Action{
 				useDhcpBounds = false
 				break BOUNDS_LOOP
 			default:
-				fmt.Println("Invalid choice. Try again")
+				fmt.Fprintln(env.out, "Invalid choice. Try again")
 			}
 		}
 
@@ -338,7 +338,7 @@ var ActionAssignSlot = &Action{
 				}
 
 				if len(slots) == 0 {
-					fmt.Println("no slots found")
+					fmt.Fprintln(env.out, "no slots found")
 					nav := NEXT
 					if pageNumber == 1 {
 						nav = BACK
@@ -351,13 +351,13 @@ var ActionAssignSlot = &Action{
 					if err != nil {
 						return NEXT, err
 					}
-					fmt.Printf("%d: %s - %s [%d]\n", i+1, slot.MinAddress, slot.MaxAddress, cap)
+					fmt.Fprintf(env.out, "%d: %s - %s [%d]\n", i+1, slot.MinAddress, slot.MaxAddress, cap)
 				}
 			} else {
-				fmt.Println("no more slots found")
+				fmt.Fprintln(env.out, "no more slots found")
 			}
 
-			fmt.Printf("\nSelect slot by number or scroll with n(ext)/p(revious)/q(uit): ")
+			fmt.Fprintf(env.out, "\nSelect slot by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err = GetInput(env.in)
 			if err != nil {
 				return NEXT, err
@@ -387,7 +387,7 @@ var ActionAssignSlot = &Action{
 				}
 				slot := slots[position]
 
-				fmt.Printf("Enter start IP [%s]: ", slot.MinAddress)
+				fmt.Fprintf(env.out, "Enter start IP [%s]: ", slot.MinAddress)
 				startIPText, err := GetInput(env.in)
 				if err != nil {
 					return NEXT, err
@@ -408,7 +408,7 @@ var ActionAssignSlot = &Action{
 						return NEXT, err
 					}
 					if startIPInt < minIPInt {
-						fmt.Printf("Given start IP is below range. Try again")
+						fmt.Fprintf(env.out, "Given start IP is below range. Try again")
 						return REPEAT, nil
 					}
 					maxIPInt, err := tplinkapi.Ip2Int(slot.MaxAddress)
@@ -416,14 +416,14 @@ var ActionAssignSlot = &Action{
 						return NEXT, err
 					}
 					if startIPInt > maxIPInt {
-						fmt.Printf("Given start IP is above range. Try again")
+						fmt.Fprintf(env.out, "Given start IP is above range. Try again")
 						return REPEAT, nil
 					}
 					startIP = startIPText
 				}
 
 				capacity, _ := slot.GetCapacity()
-				fmt.Printf("Enter number of devices [Default %d]: ", capacity)
+				fmt.Fprintf(env.out, "Enter number of devices [Default %d]: ", capacity)
 				num, err := GetIntInput(env.in, capacity)
 				if err != nil {
 					return NEXT, err
@@ -458,14 +458,14 @@ var ActionAssignSlot = &Action{
 				}
 
 				maxDown := 1000
-				fmt.Printf("Enter max download speed (kbps) [Default %d]: ", maxDown)
+				fmt.Fprintf(env.out, "Enter max download speed (kbps) [Default %d]: ", maxDown)
 				maxDown, err = GetIntInput(env.in, maxDown)
 				if err != nil {
 					return NEXT, err
 				}
 
 				maxUp := 1000
-				fmt.Printf("Enter max upload speed (kbps) [Default %d]: ", maxUp)
+				fmt.Fprintf(env.out, "Enter max upload speed (kbps) [Default %d]: ", maxUp)
 				maxUp, err = GetIntInput(env.in, maxUp)
 				if err != nil {
 					return NEXT, err
@@ -488,7 +488,7 @@ var ActionAssignSlot = &Action{
 				if updateDhcp {
 					err = env.router.service.UpdateDhcpConfiguration(dhcpConfig)
 					if err != nil {
-						fmt.Printf("an error occurred while updating DHCP configuration: '%v'", err)
+						fmt.Fprintf(env.out, "an error occurred while updating DHCP configuration: '%v'", err)
 					}
 				}
 				storageSlot := storage.BandwidthSlot{
@@ -499,7 +499,7 @@ var ActionAssignSlot = &Action{
 				if err != nil {
 					return NEXT, err
 				}
-				fmt.Println("Entry created successfully")
+				fmt.Fprintln(env.out, "Entry created successfully")
 				return NEXT, err
 			}
 		}
@@ -526,7 +526,7 @@ var ActionDeregisterUser = &Action{
 				return NEXT, err
 			}
 		}
-		fmt.Println("user deleted")
+		fmt.Fprintln(env.out, "user deleted")
 		delete(env.ctx, "userId")
 		return BACK, nil
 	},
@@ -551,7 +551,7 @@ var ActionDeleteSlot = &Action{
 		if err != nil {
 			return NEXT, err
 		}
-		fmt.Printf("slot deleted successfully")
+		fmt.Fprintf(env.out, "slot deleted successfully")
 		return BACK, nil
 	},
 	RequiresContext: []string{"slotId"},
@@ -617,7 +617,7 @@ var ActionListDevices = &Action{
 					return NEXT, err
 				}
 				if len(devices) == 0 {
-					fmt.Println("no devices found")
+					fmt.Fprintln(env.out, "no devices found")
 					return NEXT, nil
 				}
 				dataRows := make([][]string, len(devices))
@@ -636,10 +636,10 @@ var ActionListDevices = &Action{
 					return NEXT, err
 				}
 			} else {
-				fmt.Println("no more users found")
+				fmt.Fprintln(env.out, "no more users found")
 			}
 
-			fmt.Printf("\nSelect device by number or scroll with n(ext)/p(revious)/q(uit): ")
+			fmt.Fprintf(env.out, "\nSelect device by number or scroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(env.in)
 			if err != nil {
 				return NEXT, err
@@ -664,7 +664,7 @@ var ActionListDevices = &Action{
 			default:
 				num, err := GetChoice(choice, len(devices))
 				if err == ErrInvalidChoice {
-					fmt.Println("invalid choice. try again")
+					fmt.Fprintln(env.out, "invalid choice. try again")
 					showList = false
 					continue
 				}
@@ -712,10 +712,10 @@ var ActionShowConnectedDevices = &Action{
 			if showList {
 				if len(stats) == 0 {
 					if pageNumber == 1 {
-						fmt.Println("No connected devices")
+						fmt.Fprintln(env.out, "No connected devices")
 						return NEXT, err
 					} else {
-						fmt.Println("No more devices found")
+						fmt.Fprintln(env.out, "No more devices found")
 					}
 				}
 
@@ -738,10 +738,10 @@ var ActionShowConnectedDevices = &Action{
 					return NEXT, err
 				}
 			} else {
-				fmt.Println("No more devices found")
+				fmt.Fprintln(env.out, "No more devices found")
 			}
 
-			fmt.Printf("\nScroll with n(ext)/p(revious)/q(uit): ")
+			fmt.Fprintf(env.out, "\nScroll with n(ext)/p(revious)/q(uit): ")
 			choice, err := GetInput(env.in)
 			if err != nil {
 				return NEXT, err
@@ -765,7 +765,7 @@ var ActionShowConnectedDevices = &Action{
 			case "q":
 				return NEXT, nil
 			default:
-				fmt.Println("Invalid input")
+				fmt.Fprintln(env.out, "Invalid input")
 				continue
 			}
 		}
@@ -786,7 +786,7 @@ var ActionExportARPBindings = &Action{
 		}
 
 		if len(bindings) == 0 {
-			fmt.Println("No bindings found")
+			fmt.Fprintln(env.out, "No bindings found")
 			return NEXT, nil
 		}
 
@@ -809,7 +809,7 @@ var ActionExportDhcpAddressReservations = &Action{
 		}
 
 		if len(reservations) == 0 {
-			fmt.Println("No reservations found")
+			fmt.Fprintln(env.out, "No reservations found")
 			return NEXT, nil
 		}
 
@@ -843,18 +843,18 @@ var ActionRegisterDevice = &Action{
 		}
 
 		for {
-			fmt.Printf("Enter mac address: ")
+			fmt.Fprintf(env.out, "Enter mac address: ")
 			text, err := GetInput(env.in)
 			if err != nil {
 				return NEXT, err
 			}
 			if !IsValidMacAddress(text) {
-				fmt.Println("Invalid mac address. Try again")
+				fmt.Fprintln(env.out, "Invalid mac address. Try again")
 				continue
 			}
 			mac := text
 
-			fmt.Printf("Enter alias: ")
+			fmt.Fprintf(env.out, "Enter alias: ")
 			text, err = GetInput(env.in)
 			if err != nil {
 				return NEXT, err
@@ -877,7 +877,7 @@ var ActionRegisterDevice = &Action{
 			if err != nil {
 				return NEXT, err
 			}
-			fmt.Printf("device assigned ip '%s'\n", client.IP)
+			fmt.Fprintf(env.out, "device assigned ip '%s'\n", client.IP)
 
 			alias := text
 			existingDevices, err := env.db.DeviceStore.ReadManyByMac([]string{client.Mac})
@@ -896,9 +896,9 @@ var ActionRegisterDevice = &Action{
 				if err != nil {
 					return NEXT, err
 				}
-				fmt.Printf("Device added successfully %+v\n", device)
+				fmt.Fprintf(env.out, "Device added successfully %+v\n", device)
 			} else {
-				fmt.Println("Device already registered")
+				fmt.Fprintln(env.out, "Device already registered")
 			}
 
 			break
@@ -931,7 +931,7 @@ var ActionDeregisterDevice = &Action{
 			return NEXT, err
 		}
 
-		fmt.Println("Device deregistered")
+		fmt.Fprintln(env.out, "Device deregistered")
 		delete(env.ctx, "deviceId")
 		return BACK, nil
 	},
@@ -956,7 +956,7 @@ var ActionListBlockedDevices = &Action{
 		}
 
 		if len(addresses) == 0 {
-			fmt.Println("no blocked devices found")
+			fmt.Fprintln(env.out, "no blocked devices found")
 			return NEXT, nil
 		}
 
@@ -965,7 +965,7 @@ var ActionListBlockedDevices = &Action{
 			return NEXT, err
 		}
 
-		fmt.Println("Blocked devices:")
+		fmt.Fprintln(env.out, "Blocked devices:")
 		dataRows := make([][]string, len(devices))
 		for i, device := range devices {
 			user, err := device.GetUser(env.db.UserStore)
@@ -985,14 +985,14 @@ var ActionListBlockedDevices = &Action{
 var ActionBlockDevice = &Action{
 	Name: "Block device",
 	Action: func(env *Env) (Navigation, error) {
-		fmt.Printf("Enter devic mac address: ")
+		fmt.Fprintf(env.out, "Enter devic mac address: ")
 		mac, err := GetInput(env.in)
 		if err != nil {
 			return NEXT, nil
 		}
 		mac = strings.ToUpper(mac)
 		if !IsValidMacAddress(mac) {
-			fmt.Println("invalid mac address")
+			fmt.Fprintln(env.out, "invalid mac address")
 			return NEXT, nil
 		}
 
@@ -1004,14 +1004,14 @@ var ActionBlockDevice = &Action{
 var ActionUnblockDevice = &Action{
 	Name: "Unblock device",
 	Action: func(env *Env) (Navigation, error) {
-		fmt.Printf("Enter devic mac address: ")
+		fmt.Fprintf(env.out, "Enter devic mac address: ")
 		mac, err := GetInput(env.in)
 		if err != nil {
 			return NEXT, nil
 		}
 		mac = strings.ToUpper(mac)
 		if !IsValidMacAddress(mac) {
-			fmt.Println("invalid mac address")
+			fmt.Fprintln(env.out, "invalid mac address")
 			return NEXT, nil
 		}
 
@@ -1020,7 +1020,7 @@ var ActionUnblockDevice = &Action{
 			return NEXT, err
 		}
 
-		fmt.Printf("device '%s' unblocked", mac)
+		fmt.Fprintf(env.out, "device '%s' unblocked", mac)
 		return NEXT, err
 	},
 }
@@ -1058,11 +1058,11 @@ func RunMenuActions(env *Env, actions []*Action) (Navigation, error) {
 	}
 
 	for {
-		fmt.Printf("\nChoose an action: \n%s\n\nChoice: ", options.String())
+		fmt.Fprintf(env.out, "\nChoose an action: \n%s\n\nChoice: ", options.String())
 		choice, err := GetChoiceInput(env.in, len(actions))
 		if err != nil {
 			if err == ErrInvalidChoice || err == ErrInvalidInput {
-				fmt.Printf("%v, try again\n", err)
+				fmt.Fprintf(env.out, "%v, try again\n", err)
 				continue
 			} else {
 				return NEXT, err

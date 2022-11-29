@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -11,30 +10,6 @@ import (
 	"github.com/omushpapa/routerman/storage"
 	"github.com/omushpapa/tplinkapi"
 )
-
-var (
-	ErrInvalidChoice = errors.New("invalid choice")
-	ErrInvalidInput  = errors.New("invalid input")
-	ExitChoice       = 99
-	QuitChoice       = 999
-)
-
-type Navigation int
-
-const (
-	NEXT Navigation = iota
-	BACK
-	REPEAT
-)
-
-type ActionFunc func(env *core.Env) (Navigation, error)
-
-type Action struct {
-	Name            string
-	Children        []*Action
-	RequiresContext []string
-	Action          ActionFunc
-}
 
 func (action Action) GetValidChildren(ctx core.Context) []*Action {
 	actions := make([]*Action, 0)

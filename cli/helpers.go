@@ -8,10 +8,13 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"unicode"
+
+	"github.com/omushpapa/tplinkapi"
 )
 
 var macAddressRegex = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
@@ -134,4 +137,29 @@ func PrintTable(out io.Writer, dataRows [][]string, numbered bool, numberPadding
 		fmt.Fprintln(w, rowText)
 	}
 	return w.Flush()
+}
+
+func ExportBindings(bindings []tplinkapi.ClientReservation, filename string) error {
+	sort.Slice(bindings, func(i, j int) bool {
+		return bindings[i].IpAsInt() < bindings[j].IpAsInt()
+	})
+
+	csvData := make([][]string, len(bindings)+1)
+	headers := []string{"Mac", "IP", "Enabled"}
+	csvData[0] = headers
+
+	for i, binding := range bindings {
+		enabled := "n"
+		if binding.Enabled {
+			enabled = "y"
+		}
+
+		csvData[i+1] = []string{binding.Mac, binding.IP, enabled}
+	}
+
+	if err := WriteToCsv(filename, csvData); err != nil {
+		return err
+	}
+
+	return nil
 }

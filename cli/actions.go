@@ -2,32 +2,11 @@ package cli
 
 import (
 	"fmt"
-	"sort"
-	"strconv"
-	"strings"
 
 	"github.com/omushpapa/routerman/core"
 	"github.com/omushpapa/routerman/storage"
 	"github.com/omushpapa/tplinkapi"
 )
-
-func (action Action) GetValidChildren(ctx core.Context) []*Action {
-	actions := make([]*Action, 0)
-
-OUTER:
-	for _, action := range action.Children {
-		if len(action.RequiresContext) > 0 {
-			for _, k := range action.RequiresContext {
-				_, exists := ctx[k]
-				if !exists {
-					continue OUTER
-				}
-			}
-		}
-		actions = append(actions, action)
-	}
-	return actions
-}
 
 var RootActionManageUsers = &Action{
 	Name: "Manage users",
@@ -816,120 +795,4 @@ var ActionQuit = &Action{
 	Action: func(env *core.Env) (Navigation, error) {
 		return NEXT, nil
 	},
-}
-
-func RunMenuActions(env *core.Env, actions []*Action) (Navigation, error) {
-	if QuitProgram(env.Ctx) {
-		return BACK, nil
-	}
-
-	var (
-		options      strings.Builder
-		navigation   Navigation
-		containsQuit bool = false
-	)
-	for i, action := range actions {
-		id := strconv.Itoa(i + 1)
-		if action == ActionQuit {
-			containsQuit = true
-			id = "Q"
-		}
-		options.WriteString(
-			fmt.Sprintf("%s: %s\n", id, action.Name),
-		)
-	}
-	if !containsQuit {
-		options.WriteString("B: Back\n")
-		options.WriteString("Q: Quit\n")
-	}
-
-	for {
-		fmt.Fprintf(env.Out, "\nChoose an action: \n%s\n\nChoice: ", options.String())
-		choice, err := GetChoiceInput(env.In, len(actions))
-		if err != nil {
-			if err == ErrInvalidChoice || err == ErrInvalidInput {
-				fmt.Fprintf(env.Out, "%v, try again\n", err)
-				continue
-			} else {
-				return NEXT, err
-			}
-		}
-
-		if choice == ExitChoice {
-			break
-		}
-
-		if choice == QuitChoice {
-			env.Ctx.Set("quit", 1)
-			break
-		}
-
-		action := actions[choice]
-		if action == ActionQuit {
-			env.Ctx.Set("quit", 1)
-			break
-		}
-
-		if action.Action != nil {
-			navigation, err = action.Action(env)
-			if err != nil {
-				return NEXT, err
-			}
-
-			if navigation == BACK {
-				break
-			}
-
-			if navigation == REPEAT {
-				continue
-			}
-		}
-
-		children := action.GetValidChildren(env.Ctx)
-		if len(children) > 0 {
-			navigation, err = RunMenuActions(env, children)
-			if QuitProgram(env.Ctx) {
-				break
-			}
-
-			if err != nil {
-				return NEXT, err
-			}
-
-			if navigation == BACK {
-				break
-			}
-		}
-	}
-	return NEXT, nil
-}
-
-func QuitProgram(ctx core.Context) bool {
-	quit := ctx["quit"]
-	return quit > 0
-}
-
-func ExportBindings(bindings []tplinkapi.ClientReservation, filename string) error {
-	sort.Slice(bindings, func(i, j int) bool {
-		return bindings[i].IpAsInt() < bindings[j].IpAsInt()
-	})
-
-	csvData := make([][]string, len(bindings)+1)
-	headers := []string{"Mac", "IP", "Enabled"}
-	csvData[0] = headers
-
-	for i, binding := range bindings {
-		enabled := "n"
-		if binding.Enabled {
-			enabled = "y"
-		}
-
-		csvData[i+1] = []string{binding.Mac, binding.IP, enabled}
-	}
-
-	if err := WriteToCsv(filename, csvData); err != nil {
-		return err
-	}
-
-	return nil
 }

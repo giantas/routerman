@@ -644,7 +644,9 @@ var ActionExportARPBindings = &Action{
 			return NEXT, nil
 		}
 
-		err = ExportBindings(bindings, "bindings.csv")
+		filename := "bindings.csv"
+		err = ExportBindings(bindings, filename)
+		fmt.Fprintf(env.Out, "saved to '%s'\n", filename)
 		return NEXT, err
 	},
 }
@@ -667,7 +669,9 @@ var ActionExportDhcpAddressReservations = &Action{
 			return NEXT, nil
 		}
 
-		err = ExportBindings(reservations, "reservations.csv")
+		filename := "reservations.csv"
+		err = ExportBindings(reservations, filename)
+		fmt.Fprintf(env.Out, "saved to '%s'\n", filename)
 		return NEXT, err
 	},
 }
@@ -927,6 +931,5 @@ func ExportBindings(bindings []tplinkapi.ClientReservation, filename string) err
 		return err
 	}
 
-	fmt.Printf("saved to '%s'\n", filename)
 	return nil
 }
